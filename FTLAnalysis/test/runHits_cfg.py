@@ -48,7 +48,7 @@ options.parseArguments()
 
 
 from Configuration.StandardSequences.Eras import eras
-process = cms.Process('FTLDumpHits',eras.Phase2C4_timing_layer_new)
+process = cms.Process('FTLDumpHits',eras.phase2_timing_layer_new)
 
 process.options = cms.untracked.PSet(allowUnscheduled = cms.untracked.bool(True))
 
