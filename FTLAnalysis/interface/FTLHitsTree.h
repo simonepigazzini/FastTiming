@@ -14,6 +14,7 @@ using namespace std;
   DATA(int, run)                         \
   DATA(int, simHits_n)                   \
   DATA(int, recHits_n)                   \
+  DATA(int, clusters_n)                   \
   
 #define DATA_CLASS_TABLE                                                \
   DATA(vector<int>,   track_idx)                                        \
@@ -60,8 +61,30 @@ using namespace std;
   DATA(vector<float>, recHits_local_y)                                  \
   DATA(vector<float>, recHits_local_z)                                  \
   DATA(vector<float>, recHits_global_R)                                 \
+  DATA(vector<float>, clusters_energy)                                   \
+  DATA(vector<float>, clusters_time)                                     \
+  DATA(vector<float>, clusters_x)                                   \
+  DATA(vector<float>, clusters_y)                                     \
+  DATA(vector<float>, clusters_seed_energy)                                   \
+  DATA(vector<float>, clusters_seed_time)                                     \
+  DATA(vector<int>,   clusters_seed_x)                                   \
+  DATA(vector<int>,   clusters_seed_y)                                     \
+  DATA(vector<int>,   clusters_size)                                       \
+  DATA(vector<int>,   clusters_size_x)                                       \
+  DATA(vector<int>,   clusters_size_y)                                       \
+  DATA(vector<int>,   clusters_rr)                                       \
+  DATA(vector<int>,   clusters_module)                                   \
+  DATA(vector<int>,   clusters_modType)                                  \
+  DATA(vector<int>,   clusters_crystal)                                  \
+  DATA(vector<int>,   clusters_ieta)                                     \
+  DATA(vector<int>,   clusters_iphi)                                     \
+  DATA(vector<float>, clusters_local_x)                                  \
+  DATA(vector<float>, clusters_local_y)                                  \
+  DATA(vector<float>, clusters_local_z)                                  \
+  DATA(vector<float>, clusters_global_R)                                 \
   DATA(vector<int>,   matchedSimHits_n)                                 \
   DATA(vector<int>,   matchedRecHits_n)                                 \
+  DATA(vector<int>,   matchedClusters_n)                                 \
   DATA(vector, matchedSimHits_idx,           <vector<int> >)            \
   DATA(vector, matchedSimHits_energy,        <vector<float> >)          \
   DATA(vector, matchedSimHits_energyCorr,    <vector<float> >)          \
@@ -107,7 +130,30 @@ using namespace std;
   DATA(vector, matchedRecHits_track_RDphi,   <vector<float> >)          \
   DATA(vector, matchedRecHits_track_dist,    <vector<float> >)          \
   DATA(vector, matchedRecHits_sietaieta,     <vector<float> >)          \
-  DATA(vector, matchedRecHits_siphiiphi,     <vector<float> >)
+  DATA(vector, matchedRecHits_siphiiphi,     <vector<float> >)          \
+  DATA(vector, matchedClusters_idx,           <vector<int> >)            \
+  DATA(vector, matchedClusters_energy,        <vector<float> >)          \
+  DATA(vector, matchedClusters_energyCorr,    <vector<float> >)          \
+  DATA(vector, matchedClusters_time,          <vector<float> >)          \
+  DATA(vector, matchedClusters_rr,            <vector<int> >)            \
+  DATA(vector, matchedClusters_module,        <vector<int> >)            \
+  DATA(vector, matchedClusters_modType,       <vector<int> >)            \
+  DATA(vector, matchedClusters_crystal,       <vector<int> >)            \
+  DATA(vector, matchedClusters_ieta,          <vector<int> >)            \
+  DATA(vector, matchedClusters_iphi,          <vector<int> >)            \
+  DATA(vector, matchedClusters_size,          <vector<int> >)            \
+  DATA(vector, matchedClusters_size_x,        <vector<int> >)            \
+  DATA(vector, matchedClusters_size_y,        <vector<int> >)            \
+  DATA(vector, matchedClusters_local_x,       <vector<float> >)          \
+  DATA(vector, matchedClusters_local_y,       <vector<float> >)          \
+  DATA(vector, matchedClusters_local_z,       <vector<float> >)          \
+  DATA(vector, matchedClusters_global_R,      <vector<float> >)          \
+  DATA(vector, matchedClusters_track_Deta,    <vector<float> >)          \
+  DATA(vector, matchedClusters_track_Dphi,    <vector<float> >)          \
+  DATA(vector, matchedClusters_track_DR,      <vector<float> >)          \
+  DATA(vector, matchedClusters_track_Dz,      <vector<float> >)          \
+  DATA(vector, matchedClusters_track_RDphi,   <vector<float> >)          \
+  DATA(vector, matchedClusters_track_dist,    <vector<float> >)          
 
 #include "ExternalTools/DynamicTTree/interface/DynamicTTreeInterface.h"
 

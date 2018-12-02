@@ -20,6 +20,7 @@
 #include "DataFormats/ForwardDetId/interface/BTLDetId.h"
 #include "DataFormats/FTLRecHit/interface/FTLRecHit.h"
 #include "DataFormats/FTLRecHit/interface/FTLRecHitCollections.h"
+#include "DataFormats/FTLRecHit/interface/FTLClusterCollections.h"
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "DataFormats/GeometryCommonDetAlgo/interface/MeasurementError.h"
 #include "DataFormats/GeometryCommonDetAlgo/interface/MeasurementPoint.h"
@@ -88,6 +89,8 @@ private:
   edm::EDGetTokenT<std::vector<PSimHit> > simHitsToken_;
   edm::Handle<FTLRecHitCollection> recHitsHandle_;
   edm::EDGetTokenT<FTLRecHitCollection> recHitsToken_;    
+  edm::Handle<FTLClusterCollection> clustersHandle_;
+  edm::EDGetTokenT<FTLClusterCollection> clustersToken_;    
   edm::EDGetTokenT<edm::View<reco::Track> > tracksToken_;
   edm::Handle<edm::View<reco::Track> > tracksHandle_;
   
@@ -111,6 +114,7 @@ FTLDumpHits::FTLDumpHits(const edm::ParameterSet& pSet):
   genParticlesToken_(consumes<reco::GenParticleCollection>(pSet.getUntrackedParameter<edm::InputTag>("genParticlesTag"))),
   simHitsToken_(consumes<std::vector<PSimHit> >(pSet.getUntrackedParameter<edm::InputTag>("simHitsTag"))),
   recHitsToken_(consumes<FTLRecHitCollection>(pSet.getUntrackedParameter<edm::InputTag>("recHitsTag"))),
+  clustersToken_(consumes<FTLClusterCollection>(pSet.getUntrackedParameter<edm::InputTag>("clustersTag"))),
   tracksToken_(consumes<edm::View<reco::Track> >(pSet.getUntrackedParameter<edm::InputTag>("tracksTag"))),
   crysLayout_((BTLDetId::CrysLayout)(pSet.getUntrackedParameter<int>("crysLayout"))),
   track_hit_DRMax_(pSet.getParameter<double>("track_hit_DRMax")),
@@ -155,6 +159,11 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
   auto recHits = FTLRecHitCollection();
   if(recHitsHandle_.isValid())
     recHits = *recHitsHandle_.product();
+
+  event.getByToken(clustersToken_, clustersHandle_);
+  // auto clusters = FTLClusterCollection();
+  // if(clustersHandle_.isValid())
+  auto clusters = *clustersHandle_.product();
   
   //---load tracks
   event.getByToken(tracksToken_,tracksHandle_);
@@ -248,9 +257,80 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
     outTree_.recHits_local_z->push_back(lp.z());
     outTree_.recHits_global_R->push_back(sqrt(gp.perp2()));
   }
+
+
+  //---fill the tree - recHits
+  outTree_.clusters_n = 0;
   
-  
-  
+  for (auto clusIt : clusters)
+    {    
+      DetId id = clusIt.detId();
+      //    DetId geoId = BTLDetId(id.mtdSide(),id.mtdRR(),id.module()+14*(id.modType()-1),0,1);
+      const auto& det = mtdGeometry_ -> idToDet(id);
+      const ProxyMTDTopology& topoproxy = static_cast<const ProxyMTDTopology&>(det->topology());
+      const RectangularMTDTopology& topo = static_cast<const RectangularMTDTopology&>(topoproxy.specificTopology());    
+      for ( auto cluster : clusIt)
+	{
+	  float energy = cluster.energy();
+	  float time   = cluster.time();
+	  float x=cluster.x();
+	  float y=cluster.y();
+	  int size=cluster.size();
+	  int sizeX=cluster.sizeX();
+	  int sizeY=cluster.sizeY();
+	  float seed_energy=cluster.seed().energy;
+	  float seed_time=cluster.seed().time;
+	  int seed_x=cluster.seed().x;
+	  int seed_y=cluster.seed().y;
+	  
+	  MeasurementPoint mp(cluster.x(),cluster.y());
+	  LocalPoint lp = topo.localPosition(mp);
+	  GlobalPoint gp = det->toGlobal(lp);
+	  
+	  MTDDetId mtdId(id);
+	  int RR = 0;
+	  int module = 0;
+	  int modType = 0;
+	  int crystal = 0;
+	  int ieta = 0;
+	  int iphi = 0;
+	  
+	  if ( mtdId.mtdSubDetector() == MTDDetId::BTL )
+	    {
+	      BTLDetId btlId(id);
+	      RR = btlId.mtdRR();
+	      module = btlId.module();
+	      modType = btlId.modType();
+	      crystal = btlId.crystal();
+	      ieta = btlId.ieta(crysLayout_);
+	      iphi = btlId.iphi(crysLayout_);
+	    }
+	  
+	  outTree_.clusters_n += 1;    
+	  outTree_.clusters_size->push_back(size);
+	  outTree_.clusters_size_x->push_back(sizeX);
+	  outTree_.clusters_size_y->push_back(sizeY);
+	  outTree_.clusters_energy->push_back(energy);
+	  outTree_.clusters_time->push_back(time);
+	  outTree_.clusters_rr->push_back(RR);
+	  outTree_.clusters_module->push_back(module);
+	  outTree_.clusters_modType->push_back(modType);
+	  outTree_.clusters_crystal->push_back(crystal);
+	  outTree_.clusters_ieta->push_back(ieta);
+	  outTree_.clusters_iphi->push_back(iphi);
+	  outTree_.clusters_x->push_back(x);
+	  outTree_.clusters_y->push_back(y);
+	  outTree_.clusters_seed_energy->push_back(seed_energy);
+	  outTree_.clusters_seed_time->push_back(seed_time);
+	  outTree_.clusters_seed_x->push_back(seed_x);
+	  outTree_.clusters_seed_y->push_back(seed_y);
+	  outTree_.clusters_local_x->push_back(lp.x());
+	  outTree_.clusters_local_y->push_back(lp.y());
+	  outTree_.clusters_local_z->push_back(lp.z());
+	  outTree_.clusters_global_R->push_back(sqrt(gp.perp2()));
+	}
+    }
+
   //--- fill the tree - tracks
   int idx=0;
   for(unsigned iTrack = 0; iTrack < tracks.size(); ++iTrack)
@@ -309,6 +389,7 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
     
     outTree_.matchedSimHits_n->resize(idx+1);
     outTree_.matchedRecHits_n->resize(idx+1);
+    outTree_.matchedClusters_n->resize(idx+1);
     
     outTree_.matchedSimHits_idx->resize(idx+1);
     outTree_.matchedSimHits_energy->resize(idx+1);
@@ -357,8 +438,31 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
     outTree_.matchedRecHits_track_dist->resize(idx+1);
     outTree_.matchedRecHits_sietaieta->resize(idx+1);
     outTree_.matchedRecHits_siphiiphi->resize(idx+1);
-    
-    
+
+    outTree_.matchedClusters_idx->resize(idx+1);
+    outTree_.matchedClusters_energy->resize(idx+1);
+    outTree_.matchedClusters_energyCorr->resize(idx+1);
+    outTree_.matchedClusters_time->resize(idx+1);
+    outTree_.matchedClusters_rr->resize(idx+1);
+    outTree_.matchedClusters_module->resize(idx+1);
+    outTree_.matchedClusters_modType->resize(idx+1);
+    outTree_.matchedClusters_crystal->resize(idx+1);
+    outTree_.matchedClusters_ieta->resize(idx+1);
+    outTree_.matchedClusters_iphi->resize(idx+1);
+    outTree_.matchedClusters_size->resize(idx+1);
+    outTree_.matchedClusters_size_x->resize(idx+1);
+    outTree_.matchedClusters_size_y->resize(idx+1);
+    outTree_.matchedClusters_local_x->resize(idx+1);
+    outTree_.matchedClusters_local_y->resize(idx+1);
+    outTree_.matchedClusters_local_z->resize(idx+1);
+    outTree_.matchedClusters_global_R->resize(idx+1);
+    outTree_.matchedClusters_track_Deta->resize(idx+1);
+    outTree_.matchedClusters_track_Dphi->resize(idx+1);
+    outTree_.matchedClusters_track_DR->resize(idx+1);
+    outTree_.matchedClusters_track_Dz->resize(idx+1);
+    outTree_.matchedClusters_track_RDphi->resize(idx+1);
+    outTree_.matchedClusters_track_dist->resize(idx+1);
+        
     // track extrapolation
     const GlobalPoint vtx_outer(track.outerPosition().x(),track.outerPosition().y(),track.outerPosition().z());
     GlobalVector vec_outer(track.outerMomentum().x(),track.outerMomentum().y(),track.outerMomentum().z());
@@ -580,6 +684,9 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
       MeasurementPoint mp(id.row(topo.nrows()),id.column(topo.nrows()));
       LocalPoint lp = topo.localPosition(mp);
       GlobalPoint gp = det->toGlobal(lp);
+
+      float eta = gp.eta();
+      float phi = gp.phi();
       
       int RR = id.mtdRR();
       int module = id.module();
@@ -587,8 +694,6 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
       int crystal = id.crystal();
       int ieta = id.ieta(crysLayout_);
       int iphi = id.iphi(crysLayout_);
-      float eta = gp.eta();
-      float phi = gp.phi();
       
       GlobalPoint gp_track = gp_ext[abs(id.row(topo.nrows())-int(topo.nrows()/2))];
       
@@ -645,15 +750,114 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
       
       ++recHitIt;
     }
+  
+    //---find associated recHits
+    int clusterIt = 0;
+
+    for (auto clusIt : clusters)
+      {    
+	DetId id = clusIt.detId();
+	//    DetId geoId = BTLDetId(id.mtdSide(),id.mtdRR(),id.module()+14*(id.modType()-1),0,1);
+	const auto& det = mtdGeometry_ -> idToDet(id);
+	const ProxyMTDTopology& topoproxy = static_cast<const ProxyMTDTopology&>(det->topology());
+	const RectangularMTDTopology& topo = static_cast<const RectangularMTDTopology&>(topoproxy.specificTopology());    
+	for ( auto cluster : clusIt)
+	  {
+	    
+	    MTDDetId mtdId(id);
+	    int RR = 0;
+	    int module = 0;
+	    int modType = 0;
+	    int crystal = 0;
+	    int ieta = 0;
+	    int iphi = 0;
+	    
+	    if ( mtdId.mtdSubDetector() == MTDDetId::BTL )
+	      {
+		BTLDetId btlId(id);
+		RR = btlId.mtdRR();
+		module = btlId.module();
+		modType = btlId.modType();
+		crystal = btlId.crystal();
+		ieta = btlId.ieta(crysLayout_);
+		iphi = btlId.iphi(crysLayout_);
+	      }
+	    
+	    double energy = cluster.energy();
+	    double time   = cluster.time();
+	    int size=cluster.size();
+	    int sizeX=cluster.sizeX();
+	    int sizeY=cluster.sizeY();
+	    
+	    MeasurementPoint mp(cluster.x(),cluster.y());
+	    LocalPoint lp = topo.localPosition(mp);
+	    GlobalPoint gp = det->toGlobal(lp);
+	    
+	    float eta = gp.eta();
+	    float phi = gp.phi();
+	    
+	    GlobalPoint gp_track = gp_ext[abs(cluster.seed().x-int(topo.nrows()/2))];
+	    
+	    float Deta  = gp_track.mag() > 0. ? eta-gp_track.eta()           : -999.;
+	    float Dphi  = gp_track.mag() > 0. ? deltaPhi(phi,gp_track.phi()) : -999.;
+	    float DR    = gp_track.mag() > 0. ? sqrt(Deta*Deta+Dphi*Dphi)    : -999.;
+	    float Dz    = gp_track.mag() > 0. ? gp_track.z()-gp.z()          : -999.;
+	    float RDphi = gp_track.mag() > 0. ? sqrt(gp_track.perp2())*Dphi  : -999.;
+	    float dist  = gp_track.mag() > 0. ? (gp-gp_track).mag()          : -999.;
+	    
+	    // if( DR < 0.2 && DR > 0. )
+	    //{
+	    // if( verbosity_ )  std::cout << ">>> topology:   nRows: " << topo.nrows() << "   nColumns: " << topo.ncolumns() << "   pitchx: " << topo.pitch().first << "   pitchy: " << topo.pitch().second << std::endl;
+	    // if( verbosity_ ) std::cout << ">>> " << clusterIt << ":   energy: " << energy << " MeV   time: " << time << " ns"
+	      // 				 << "   RR: " << RR << "   module: " << module << "   modType: " << modType << "   crystal: " << crystal
+	      // 				 << "   ieta: " << ieta << "   iphi: " << iphi << "   row: " << cluster.row() << "- " << id.row(topo.nrows()) << "   column: " << cluster.column() << std::endl;
+	      // if( verbosity_ ) std::cout << ">>> " << clusterIt << ":  detPosition:  global: " << PrintPosition(det->position()) << "   DR: " << DR << "   dist: " << (gp_track-det->position()).mag() << std::endl;
+	      // if( verbosity_ ) std::cout << ">>> " << clusterIt << ": hit position:   local: " << PrintPosition(lp) << "   global: " << PrintPosition(gp) << "DR: " << DR << "   dist: " << (gp_track-gp).mag() << std::endl;
+	      // if( verbosity_ ) std::cout << ">>> " << clusterIt << ": extrapolated track " << abs(cluster.row()-int(topo.nrows()/2)) << " : " << PrintPosition(gp_track) << std::endl;
+	    //}
+	    
+	    
+	    if( DR > track_hit_DRMax_ || dist > track_hit_distMax_ ) continue;
+	    if( gp_track.mag() <= 0. ) continue;
+	    
+	    outTree_.matchedClusters_n->at(idx) += 1;
+	    
+	    outTree_.matchedClusters_idx->at(idx).push_back(idx);
+	    outTree_.matchedClusters_energy->at(idx).push_back(energy);
+	    outTree_.matchedClusters_energyCorr->at(idx).push_back(energy*fabs(sin(track.theta())));
+	    outTree_.matchedClusters_time->at(idx).push_back(time);
+	    outTree_.matchedClusters_rr->at(idx).push_back(RR);
+	    outTree_.matchedClusters_module->at(idx).push_back(module);
+	    outTree_.matchedClusters_modType->at(idx).push_back(modType);
+	    outTree_.matchedClusters_crystal->at(idx).push_back(crystal);
+	    outTree_.matchedClusters_ieta->at(idx).push_back(ieta);
+	    outTree_.matchedClusters_iphi->at(idx).push_back(iphi);
+	    outTree_.matchedClusters_size->at(idx).push_back(size);
+	    outTree_.matchedClusters_size_x->at(idx).push_back(sizeX);
+	    outTree_.matchedClusters_size_y->at(idx).push_back(sizeY);
+	    outTree_.matchedClusters_local_x->at(idx).push_back(lp.x());
+	    outTree_.matchedClusters_local_y->at(idx).push_back(lp.y());
+	    outTree_.matchedClusters_local_z->at(idx).push_back(lp.z());
+	    outTree_.matchedClusters_global_R->at(idx).push_back(sqrt(gp.perp2()));
+	    outTree_.matchedClusters_track_Deta->at(idx).push_back(fabs(Deta));
+	    outTree_.matchedClusters_track_Dphi->at(idx).push_back(fabs(Dphi));
+	    outTree_.matchedClusters_track_Dz->at(idx).push_back(Dz);
+	    outTree_.matchedClusters_track_RDphi->at(idx).push_back(RDphi);
+	    outTree_.matchedClusters_track_DR->at(idx).push_back(DR);
+	    outTree_.matchedClusters_track_dist->at(idx).push_back(dist);
+	    
+	    ++clusterIt;
+	  }
+      }
+  
+  
     if( verbosity_ ) std::cout << "---\n\n\n" << std::endl;
     
     outTree_.matchedRecHits_sietaieta->at(idx).push_back( ss_hit_count>0 ? sqrt(sieie)/ss_hit_count : -999. );
     outTree_.matchedRecHits_siphiiphi->at(idx).push_back( ss_hit_count>0 ? sqrt(sipip)/ss_hit_count : -999. );
-    
+  
     ++idx;
   }
-  
-  
   
   outTree_.GetTTreePtr()->Fill();
 }
