@@ -23,15 +23,24 @@ using namespace std;
   DATA(vector<float>, track_phi)                                        \
   DATA(vector<float>, track_eta_atBTL)                                  \
   DATA(vector<float>, track_phi_atBTL)                                  \
+  DATA(vector<float>, track_x)                                          \
+  DATA(vector<float>, track_y)                                          \
+  DATA(vector<float>, track_z)                                          \
+  DATA(vector<float>, track_t)                                          \
   DATA(vector<float>, track_energy)                                     \
   DATA(vector<float>, track_normalizedChi2)                             \
   DATA(vector<int>,   track_numberOfValidHits)                          \
   DATA(vector<int>,   track_numberOfLostHits)                           \
   DATA(vector<int>,   track_isHighPurity)                               \
+  DATA(vector<int>,   track_hasMTD)                                     \
   DATA(vector<float>, track_mcMatch_genPdgId)                           \
   DATA(vector<float>, track_mcMatch_genPt)                              \
   DATA(vector<float>, track_mcMatch_genEta)                             \
   DATA(vector<float>, track_mcMatch_genPhi)                             \
+  DATA(vector<float>, track_mcMatch_genVtx_x)                           \
+  DATA(vector<float>, track_mcMatch_genVtx_y)                           \
+  DATA(vector<float>, track_mcMatch_genVtx_z)                           \
+  DATA(vector<float>, track_mcMatch_genVtx_t)                           \
   DATA(vector<float>, track_mcMatch_DR)                                 \
   DATA(vector<float>, simHits_energy)                                   \
   DATA(vector<float>, simHits_time)                                     \

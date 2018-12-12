@@ -46,9 +46,14 @@ options.register('crysLayout',
 options.maxEvents = -1
 options.parseArguments()
 
-
 from Configuration.StandardSequences.Eras import eras
-process = cms.Process('FTLDumpHits',eras.phase2_timing_layer_new)
+if 'tile' in options.crysLayout:
+    myera=eras.Phase2_timing_layer_tile
+if 'barphi' in options.crysLayout:
+    myera=eras.Phase2_timing_layer_bar
+if 'barzflat' in options.crysLayout:
+    myera=eras.Phase2C4_timing_layer_bar
+process = cms.Process('FTLDumpHits',myera)
 
 process.options = cms.untracked.PSet(allowUnscheduled = cms.untracked.bool(True))
 
