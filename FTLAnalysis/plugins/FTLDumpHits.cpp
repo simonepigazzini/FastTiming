@@ -639,15 +639,34 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
       
       float eta = gp_mid.eta();
       float phi = gp_mid.phi();
-      
-      GlobalPoint gp_track = gp_ext[abs(id.row(topo.nrows())-int(topo.nrows()/2))];
+
+      int closestPoint=-1;
+      float minDist=999;
+      for (unsigned int ic=0; ic<cyl_R.size();++ic)
+	{
+	  if (valid_point[ic])
+	    {
+	      GlobalPoint diff(gp_ext[ic].x()-gp_mid.x(),gp_ext[ic].y()-gp_mid.y(),gp_ext[ic].z()-gp_mid.z());
+	      if (diff.mag()<minDist)
+		{
+		  closestPoint=ic;
+		  minDist=diff.mag();
+		}
+	    }
+	}
+
+      if (closestPoint == -1)
+	continue;
+
+      GlobalPoint gp_track = gp_ext[closestPoint];      
+      //GlobalPoint gp_track = gp_ext[abs(id.row(topo.nrows())-int(topo.nrows()/2))];
+
       float Deta  = gp_track.mag() > 0. ? eta-gp_track.eta()           : -999.;
       float Dphi  = gp_track.mag() > 0. ? deltaPhi(phi,gp_track.phi()) : -999.;
       float DR    = gp_track.mag() > 0. ? sqrt(Deta*Deta+Dphi*Dphi)    : -999.;
       float Dz    = gp_track.mag() > 0. ? gp_track.z()-gp_mid.z()      : -999.;
       float RDphi = gp_track.mag() > 0. ? sqrt(gp_track.perp2())*Dphi  : -999.;
       float dist  = gp_track.mag() > 0. ? (gp_mid-gp_track).mag()      : -999.;
-      
       if( DR < 0.05 && DR > 0. )
       {
         if( verbosity_ )  std::cout << ">>> topology:   nRows: " << topo.nrows() << "   nColumns: " << topo.ncolumns() << "   pitchx: " << topo.pitch().first << "   pitchy: " << topo.pitch().second << std::endl;
@@ -726,7 +745,26 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
       int ieta = id.ieta(crysLayout_);
       int iphi = id.iphi(crysLayout_);
       
-      GlobalPoint gp_track = gp_ext[abs(id.row(topo.nrows())-int(topo.nrows()/2))];
+      int closestPoint=-1;
+      float minDist=999;
+      for (unsigned int ic=0; ic<cyl_R.size();++ic)
+	{
+	  if (valid_point[ic])
+	    {
+	      GlobalPoint diff(gp_ext[ic].x()-gp.x(),gp_ext[ic].y()-gp.y(),gp_ext[ic].z()-gp.z());
+	      if (diff.mag()<minDist)
+		{
+		  closestPoint=ic;
+		  minDist=diff.mag();
+		}
+	    }
+	}
+
+      if (closestPoint == -1)
+	continue;
+
+      GlobalPoint gp_track = gp_ext[closestPoint];      
+      //      GlobalPoint gp_track = gp_ext[abs(id.row(topo.nrows())-int(topo.nrows()/2))];
       
       float Deta  = gp_track.mag() > 0. ? eta-gp_track.eta()           : -999.;
       float Dphi  = gp_track.mag() > 0. ? deltaPhi(phi,gp_track.phi()) : -999.;
@@ -826,7 +864,26 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
 	    float eta = gp.eta();
 	    float phi = gp.phi();
 	    
-	    GlobalPoint gp_track = gp_ext[abs(cluster.seed().x-int(topo.nrows()/2))];
+	    int closestPoint=-1;
+	    float minDist=999;
+	    for (unsigned int ic=0; ic<cyl_R.size();++ic)
+	      {
+		if (valid_point[ic])
+		  {
+		    GlobalPoint diff(gp_ext[ic].x()-gp.x(),gp_ext[ic].y()-gp.y(),gp_ext[ic].z()-gp.z());
+		    if (diff.mag()<minDist)
+		      {
+			closestPoint=ic;
+			minDist=diff.mag();
+		      }
+		  }
+	      }
+	    
+	    if (closestPoint == -1)
+	      continue;
+
+	    GlobalPoint gp_track = gp_ext[closestPoint];      
+	    //	    GlobalPoint gp_track = gp_ext[abs(cluster.seed().x-int(topo.nrows()/2))];
 	    
 	    float Deta  = gp_track.mag() > 0. ? eta-gp_track.eta()           : -999.;
 	    float Dphi  = gp_track.mag() > 0. ? deltaPhi(phi,gp_track.phi()) : -999.;
