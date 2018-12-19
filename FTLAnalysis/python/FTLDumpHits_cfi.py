@@ -5,11 +5,11 @@ FTLDumpHits = cms.EDAnalyzer('FTLDumpHits',
                              simHitsTag = cms.untracked.InputTag("g4SimHits:FastTimerHitsBarrel"),
                              recHitsTag = cms.untracked.InputTag("mtdRecHits:FTLBarrel"),
                              clustersTag = cms.untracked.InputTag("mtdClusters:FTLBarrel"),
-                             tracksTag = cms.untracked.InputTag("mtdTrackExtender"),
+                             tracksTag = cms.untracked.InputTag("trackExtenderWithMTD"),
                              genVtxTag = cms.untracked.InputTag("g4SimHits"),
                              crysLayout = cms.untracked.int32(0),
                              track_hit_DRMax = cms.double(0.05),
                              track_hit_distMax = cms.double(99999.),
                              treeName = cms.untracked.string("DumpHits"),
-                             verbosity = cms.bool(True)
+                             verbosity = cms.bool(False)
                              )

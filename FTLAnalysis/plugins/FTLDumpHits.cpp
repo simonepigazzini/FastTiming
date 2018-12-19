@@ -286,10 +286,10 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
 	  int size=cluster.size();
 	  int sizeX=cluster.sizeX();
 	  int sizeY=cluster.sizeY();
-	  float seed_energy=cluster.seed().energy;
-	  float seed_time=cluster.seed().time;
-	  int seed_x=cluster.seed().x;
-	  int seed_y=cluster.seed().y;
+	  float seed_energy=cluster.seed().energy();
+	  float seed_time=cluster.seed().time();
+	  int seed_x=cluster.seed().x();
+	  int seed_y=cluster.seed().y();
 	  
 	  MeasurementPoint mp(cluster.x(),cluster.y());
 	  LocalPoint lp = topo.localPosition(mp);

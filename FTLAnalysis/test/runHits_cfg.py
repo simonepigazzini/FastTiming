@@ -38,6 +38,11 @@ options.register('debug',
                  VarParsing.multiplicity.singleton,
                  VarParsing.varType.bool,
                  "Print debug messages")
+options.register('runMTDReco',
+                 False,
+                 VarParsing.multiplicity.singleton,
+                 VarParsing.varType.bool,
+                 "Run MTD Reco")
 options.register('crysLayout',
                  '',
                  VarParsing.multiplicity.singleton,
@@ -150,6 +155,12 @@ process.TFileService = cms.Service(
     fileName = cms.string(options.output)
     )
 
+if (options.runMTDReco):
+    process.load("Configuration.StandardSequences.Reconstruction_cff")
+    process.load("RecoLocalFastTime.Configuration.RecoLocalFastTime_cff")
+    process.load("RecoMTD.Configuration.RecoMTD_cff")
+
+
 ## Track-MC association
 #process.load("SimGeneral.TrackingAnalysis.simHitTPAssociation_cfi")
 #process.load("SimTracker.TrackAssociatorProducers.trackAssociatorByHits_cfi")
@@ -159,6 +170,11 @@ process.TFileService = cms.Service(
 #process.trackMCMatch.associator = cms.string('trackAssociatorByHits')
 #process.path = cms.Path(process.simHitTPAssocProducer*process.trackAssociatorByHits*process.trackMCMatch*FTLDumper)
 
-process.path = cms.Path(FTLDumper)
+process.runseq = cms.Sequence()
+if options.runMTDReco:
+    process.runseq += cms.Sequence(process.mtdClusters*process.mtdTrackingRecHits)
+    process.runseq += cms.Sequence(process.trackExtenderWithMTD)
+process.runseq += FTLDumper
 
+process.path = cms.Path(process.runseq)
 process.schedule = cms.Schedule(process.path)
