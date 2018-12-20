@@ -856,9 +856,9 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
       LocalPoint lp_entry(   simHit.entryPoint().x()/10.,   simHit.entryPoint().y()/10.,   simHit.entryPoint().z()/10.);
       LocalPoint lp_mid  (simHit.localPosition().x()/10.,simHit.localPosition().y()/10.,simHit.localPosition().z()/10.);
       LocalPoint lp_exit (    simHit.exitPoint().x()/10.,    simHit.exitPoint().y()/10.,    simHit.exitPoint().z()/10.);
-      GlobalPoint gp_entry = det->toGlobal(topo.pixelToModuleLocalPoint(lp_entry,id.row(),id.column()));
-      GlobalPoint gp_mid   = det->toGlobal(topo.pixelToModuleLocalPoint(lp_mid,id.row(),id.column()));
-      GlobalPoint gp_exit  = det->toGlobal(topo.pixelToModuleLocalPoint(lp_exit,id.row(),id.column()));
+      GlobalPoint gp_entry = det->toGlobal(topo.pixelToModuleLocalPoint(lp_entry,id.row(topo.nrows()),id.column(topo.nrows())));
+      GlobalPoint gp_mid   = det->toGlobal(topo.pixelToModuleLocalPoint(lp_mid,id.row(topo.nrows()),id.column(topo.nrows())));
+      GlobalPoint gp_exit  = det->toGlobal(topo.pixelToModuleLocalPoint(lp_exit,id.row(topo.nrows()),id.column(topo.nrows())));
       
       float eta = gp_mid.eta();
       float phi = gp_mid.phi();
@@ -879,7 +879,7 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
 	continue;
 
       GlobalPoint gp_track = gp_ext[closestPoint];      
-      //GlobalPoint gp_track = gp_ext[abs(id.row()-int())];
+      //GlobalPoint gp_track = gp_ext[abs(id.row(topo.nrows())-int())];
 
       float Deta  = gp_track.mag() > 0. ? eta-gp_track.eta()           : -999.;
       float Dphi  = gp_track.mag() > 0. ? deltaPhi(phi,gp_track.phi()) : -999.;
@@ -891,7 +891,7 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
       {
         if( verbosity_ ) std::cout << ">>> " << simHitIt << ":   energy: " << energy << " MeV   time: " << time << " ns"
                                    << "   RR: " << RR << "   module: " << module << "   modType: " << modType << "   crystal: " << crystal
-                                   << "   ieta: " << ieta << "   iphi: " << iphi << "   row: " << id.row() << "   column: " << id.column() << std::endl;
+                                   << "   ieta: " << ieta << "   iphi: " << iphi << "   row: " << id.row(topo.nrows()) << "   column: " << id.column(topo.nrows()) << std::endl;
         if( verbosity_ ) std::cout << ">>> " << simHitIt << ":   entryPoint:   local: " << PrintPosition(lp_entry)        << "   global: " << PrintPosition(gp_entry) << std::endl;
         if( verbosity_ ) std::cout << ">>> " << simHitIt << ":     midPoint:   local: " << PrintPosition(lp_mid)          << "   global: " << PrintPosition(gp_mid)   << std::endl;
         if( verbosity_ ) std::cout << ">>> " << simHitIt << ":    exitPoint:   local: " << PrintPosition(lp_exit)         << "   global: " << PrintPosition(gp_exit)  << std::endl;
@@ -950,7 +950,7 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
       double energy = recHit.energy();
       double time   = recHit.time();
       
-      MeasurementPoint mp(id.row(),id.column());
+      MeasurementPoint mp(recHit.row(),recHit.column());
       LocalPoint lp = topo.localPosition(mp);
       GlobalPoint gp = det->toGlobal(lp);
 
@@ -980,7 +980,7 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
 	continue;
 
       GlobalPoint gp_track = gp_ext[closestPoint];      
-      //      GlobalPoint gp_track = gp_ext[abs(id.row()-int())];
+      //      GlobalPoint gp_track = gp_ext[abs(id.row(topo.nrows())-int())];
       
       float Deta  = gp_track.mag() > 0. ? eta-gp_track.eta()           : -999.;
       float Dphi  = gp_track.mag() > 0. ? deltaPhi(phi,gp_track.phi()) : -999.;
@@ -993,7 +993,7 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
       {
         if( verbosity_ ) std::cout << ">>> " << recHitIt << ":   energy: " << energy << " MeV   time: " << time << " ns"
                                    << "   RR: " << RR << "   module: " << module << "   modType: " << modType << "   crystal: " << crystal
-                                   << "   ieta: " << ieta << "   iphi: " << iphi << "   row: " << recHit.row() << "- " << id.row() << "   column: " << recHit.column() << std::endl;
+                                   << "   ieta: " << ieta << "   iphi: " << iphi << "   row: " << recHit.row() << "- " << id.row(topo.nrows()) << "   column: " << recHit.column() << std::endl;
         if( verbosity_ ) std::cout << ">>> " << recHitIt << ":  detPosition:  global: " << PrintPosition(det->position()) << "   DR: " << DR << "   dist: " << (gp_track-det->position()).mag() << std::endl;
         if( verbosity_ ) std::cout << ">>> " << recHitIt << ": hit position:   local: " << PrintPosition(lp) << "   global: " << PrintPosition(gp) << "DR: " << DR << "   dist: " << (gp_track-gp).mag() << std::endl;
         if( verbosity_ ) std::cout << ">>> " << recHitIt << ": extrapolated track " << abs(recHit.row()-int()) << " : " << PrintPosition(gp_track) << std::endl;
@@ -1103,18 +1103,7 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
 	    float Dz    = gp_track.mag() > 0. ? gp_track.z()-gp.z()          : -999.;
 	    float RDphi = gp_track.mag() > 0. ? sqrt(gp_track.perp2())*Dphi  : -999.;
 	    float dist  = gp_track.mag() > 0. ? (gp-gp_track).mag()          : -999.;
-	    
-	    // if( DR < 0.2 && DR > 0. )
-	    //{
-	    // if( verbosity_ )  std::cout << ">>> topology:   nRows: " <<  << "   nColumns: " << topo.ncolumns() << "   pitchx: " << topo.pitch().first << "   pitchy: " << topo.pitch().second << std::endl;
-	    // if( verbosity_ ) std::cout << ">>> " << clusterIt << ":   energy: " << energy << " MeV   time: " << time << " ns"
-	      // 				 << "   RR: " << RR << "   module: " << module << "   modType: " << modType << "   crystal: " << crystal
-	      // 				 << "   ieta: " << ieta << "   iphi: " << iphi << "   row: " << cluster.row() << "- " << id.row() << "   column: " << cluster.column() << std::endl;
-	      // if( verbosity_ ) std::cout << ">>> " << clusterIt << ":  detPosition:  global: " << PrintPosition(det->position()) << "   DR: " << DR << "   dist: " << (gp_track-det->position()).mag() << std::endl;
-	      // if( verbosity_ ) std::cout << ">>> " << clusterIt << ": hit position:   local: " << PrintPosition(lp) << "   global: " << PrintPosition(gp) << "DR: " << DR << "   dist: " << (gp_track-gp).mag() << std::endl;
-	      // if( verbosity_ ) std::cout << ">>> " << clusterIt << ": extrapolated track " << abs(cluster.row()-int()) << " : " << PrintPosition(gp_track) << std::endl;
-	    //}
-	    
+	    	    
 	    
 	    if( DR > track_hit_DRMax_ || dist > track_hit_distMax_ ) continue;
 	    if( gp_track.mag() <= 0. ) continue;
@@ -1210,7 +1199,6 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
 	continue;
 
       GlobalPoint gp_track = gp_ext[closestPoint];      
-      //GlobalPoint gp_track = gp_ext[abs(id.row()-int())];
 
       float Deta  = gp_track.mag() > 0. ? eta-gp_track.eta()           : -999.;
       float Dphi  = gp_track.mag() > 0. ? deltaPhi(phi,gp_track.phi()) : -999.;
@@ -1310,7 +1298,6 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
 	continue;
 
       GlobalPoint gp_track = gp_ext[closestPoint];      
-      //      GlobalPoint gp_track = gp_ext[abs(id.row()-int())];
       
       float Deta  = gp_track.mag() > 0. ? eta-gp_track.eta()           : -999.;
       float Dphi  = gp_track.mag() > 0. ? deltaPhi(phi,gp_track.phi()) : -999.;
@@ -1424,7 +1411,6 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
 	      continue;
 
 	    GlobalPoint gp_track = gp_ext[closestPoint];      
-	    //	    GlobalPoint gp_track = gp_ext[abs(cluster.seed().x-int())];
 	    
 	    float Deta  = gp_track.mag() > 0. ? eta-gp_track.eta()           : -999.;
 	    float Dphi  = gp_track.mag() > 0. ? deltaPhi(phi,gp_track.phi()) : -999.;
@@ -1432,18 +1418,6 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
 	    float Dz    = gp_track.mag() > 0. ? gp_track.z()-gp.z()          : -999.;
 	    float RDphi = gp_track.mag() > 0. ? sqrt(gp_track.perp2())*Dphi  : -999.;
 	    float dist  = gp_track.mag() > 0. ? (gp-gp_track).mag()          : -999.;
-	    
-	    // if( DR < 0.2 && DR > 0. )
-	    //{
-	    // if( verbosity_ )  std::cout << ">>> topology:   nRows: " <<  << "   nColumns: " << topo.ncolumns() << "   pitchx: " << topo.pitch().first << "   pitchy: " << topo.pitch().second << std::endl;
-	    // if( verbosity_ ) std::cout << ">>> " << clusterIt << ":   energy: " << energy << " MeV   time: " << time << " ns"
-	      // 				 << "   RR: " << RR << "   module: " << module << "   modType: " << modType << "   crystal: " << crystal
-	      // 				 << "   ieta: " << ieta << "   iphi: " << iphi << "   row: " << cluster.row() << "- " << id.row() << "   column: " << cluster.column() << std::endl;
-	      // if( verbosity_ ) std::cout << ">>> " << clusterIt << ":  detPosition:  global: " << PrintPosition(det->position()) << "   DR: " << DR << "   dist: " << (gp_track-det->position()).mag() << std::endl;
-	      // if( verbosity_ ) std::cout << ">>> " << clusterIt << ": hit position:   local: " << PrintPosition(lp) << "   global: " << PrintPosition(gp) << "DR: " << DR << "   dist: " << (gp_track-gp).mag() << std::endl;
-	      // if( verbosity_ ) std::cout << ">>> " << clusterIt << ": extrapolated track " << abs(cluster.row()-int()) << " : " << PrintPosition(gp_track) << std::endl;
-	    //}
-	    
 	    
 	    if( DR > track_hit_DRMax_ || dist > track_hit_distMax_ ) continue;
 	    if( gp_track.mag() <= 0. ) continue;
