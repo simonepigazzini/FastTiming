@@ -48,6 +48,11 @@ options.register('crysLayout',
                  VarParsing.multiplicity.singleton,
                  VarParsing.varType.string,
                  "crystal layout (tile, barphi, barzflat)")
+options.register('nThreads',
+                 1,
+                 VarParsing.multiplicity.singleton,
+                 VarParsing.varType.int,
+                 "# threads")
 options.maxEvents = -1
 options.parseArguments()
 
@@ -60,7 +65,12 @@ if 'barzflat' in options.crysLayout:
     myera=eras.Phase2C4_timing_layer_bar
 process = cms.Process('FTLDumpHits',myera)
 
-process.options = cms.untracked.PSet(allowUnscheduled = cms.untracked.bool(True))
+process.options = cms.untracked.PSet(
+    allowUnscheduled = cms.untracked.bool(True)
+    numberOfThreads=cms.untracked.uint32(options.nThreads)
+    numberOfStreams=cms.untracked.uint32(0)
+    wantSummary = cms.untracked.bool(True)
+    )
 
 process.load('FWCore/MessageService/MessageLogger_cfi')
 process.MessageLogger.cerr.FwkReport.reportEvery = 1
@@ -143,6 +153,8 @@ process.source.duplicateCheckMode = cms.untracked.string('noDuplicateCheck')
                             
 process.load('PrecisionTiming.FTLAnalysis.FTLDumpHits_cfi')
 FTLDumper = process.FTLDumpHits
+if (options.runMTDReco):
+    FTLDumper.tracksTag = cms.untracked.InputTag("trackExtenderWithMTD")
 
 if 'tile' in options.crysLayout:
     FTLDumper.crysLayout = cms.untracked.int32(1)
