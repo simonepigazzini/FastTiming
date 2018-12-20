@@ -95,6 +95,8 @@ process.load("Geometry.MTDGeometryBuilder.mtdGeometry_cfi")
 process.load("Geometry.MTDGeometryBuilder.mtdParameters_cfi")
 process.mtdGeometry.applyAlignment = cms.bool(False)
 
+process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
+
 files = []
 files2 = []
 for dataset in options.datasets:

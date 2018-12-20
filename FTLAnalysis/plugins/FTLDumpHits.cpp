@@ -624,7 +624,6 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
     outTree_.BTLmatchedSimHits_n->resize(idx+1);
     outTree_.BTLmatchedRecHits_n->resize(idx+1);
     outTree_.BTLmatchedClusters_n->resize(idx+1);
-    
     outTree_.BTLmatchedSimHits_idx->resize(idx+1);
     outTree_.BTLmatchedSimHits_energy->resize(idx+1);
     outTree_.BTLmatchedSimHits_energyCorr->resize(idx+1);
@@ -649,7 +648,6 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
     outTree_.BTLmatchedSimHits_track_Dz->resize(idx+1);
     outTree_.BTLmatchedSimHits_track_RDphi->resize(idx+1);
     outTree_.BTLmatchedSimHits_track_dist->resize(idx+1);
-    
     outTree_.BTLmatchedRecHits_idx->resize(idx+1);
     outTree_.BTLmatchedRecHits_energy->resize(idx+1);
     outTree_.BTLmatchedRecHits_energyCorr->resize(idx+1);
@@ -672,7 +670,6 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
     outTree_.BTLmatchedRecHits_track_dist->resize(idx+1);
     outTree_.BTLmatchedRecHits_sietaieta->resize(idx+1);
     outTree_.BTLmatchedRecHits_siphiiphi->resize(idx+1);
-
     outTree_.BTLmatchedClusters_idx->resize(idx+1);
     outTree_.BTLmatchedClusters_energy->resize(idx+1);
     outTree_.BTLmatchedClusters_energyCorr->resize(idx+1);
@@ -696,6 +693,79 @@ void FTLDumpHits::analyze(edm::Event const& event, edm::EventSetup const& setup)
     outTree_.BTLmatchedClusters_track_Dz->resize(idx+1);
     outTree_.BTLmatchedClusters_track_RDphi->resize(idx+1);
     outTree_.BTLmatchedClusters_track_dist->resize(idx+1);
+
+    outTree_.ETLmatchedSimHits_n->resize(idx+1);
+    outTree_.ETLmatchedRecHits_n->resize(idx+1);
+    outTree_.ETLmatchedClusters_n->resize(idx+1);
+    outTree_.ETLmatchedSimHits_idx->resize(idx+1);
+    outTree_.ETLmatchedSimHits_energy->resize(idx+1);
+    outTree_.ETLmatchedSimHits_energyCorr->resize(idx+1);
+    outTree_.ETLmatchedSimHits_time->resize(idx+1);
+    outTree_.ETLmatchedSimHits_rr->resize(idx+1);
+    outTree_.ETLmatchedSimHits_module->resize(idx+1);
+    outTree_.ETLmatchedSimHits_modType->resize(idx+1);
+    outTree_.ETLmatchedSimHits_crystal->resize(idx+1);
+    outTree_.ETLmatchedSimHits_ieta->resize(idx+1);
+    outTree_.ETLmatchedSimHits_iphi->resize(idx+1);
+    outTree_.ETLmatchedSimHits_entry_local_x->resize(idx+1);
+    outTree_.ETLmatchedSimHits_entry_local_y->resize(idx+1);
+    outTree_.ETLmatchedSimHits_entry_local_z->resize(idx+1);
+    outTree_.ETLmatchedSimHits_entry_global_R->resize(idx+1);
+    outTree_.ETLmatchedSimHits_exit_local_x->resize(idx+1);
+    outTree_.ETLmatchedSimHits_exit_local_y->resize(idx+1);
+    outTree_.ETLmatchedSimHits_exit_local_z->resize(idx+1);
+    outTree_.ETLmatchedSimHits_exit_global_R->resize(idx+1);
+    outTree_.ETLmatchedSimHits_track_Deta->resize(idx+1);
+    outTree_.ETLmatchedSimHits_track_Dphi->resize(idx+1);
+    outTree_.ETLmatchedSimHits_track_DR->resize(idx+1);
+    outTree_.ETLmatchedSimHits_track_Dz->resize(idx+1);
+    outTree_.ETLmatchedSimHits_track_RDphi->resize(idx+1);
+    outTree_.ETLmatchedSimHits_track_dist->resize(idx+1);
+    outTree_.ETLmatchedRecHits_idx->resize(idx+1);
+    outTree_.ETLmatchedRecHits_energy->resize(idx+1);
+    outTree_.ETLmatchedRecHits_energyCorr->resize(idx+1);
+    outTree_.ETLmatchedRecHits_time->resize(idx+1);
+    outTree_.ETLmatchedRecHits_rr->resize(idx+1);
+    outTree_.ETLmatchedRecHits_module->resize(idx+1);
+    outTree_.ETLmatchedRecHits_modType->resize(idx+1);
+    outTree_.ETLmatchedRecHits_crystal->resize(idx+1);
+    outTree_.ETLmatchedRecHits_ieta->resize(idx+1);
+    outTree_.ETLmatchedRecHits_iphi->resize(idx+1);
+    outTree_.ETLmatchedRecHits_local_x->resize(idx+1);
+    outTree_.ETLmatchedRecHits_local_y->resize(idx+1);
+    outTree_.ETLmatchedRecHits_local_z->resize(idx+1);
+    outTree_.ETLmatchedRecHits_global_R->resize(idx+1);
+    outTree_.ETLmatchedRecHits_track_Deta->resize(idx+1);
+    outTree_.ETLmatchedRecHits_track_Dphi->resize(idx+1);
+    outTree_.ETLmatchedRecHits_track_DR->resize(idx+1);
+    outTree_.ETLmatchedRecHits_track_Dz->resize(idx+1);
+    outTree_.ETLmatchedRecHits_track_RDphi->resize(idx+1);
+    outTree_.ETLmatchedRecHits_track_dist->resize(idx+1);
+    outTree_.ETLmatchedRecHits_sietaieta->resize(idx+1);
+    outTree_.ETLmatchedRecHits_siphiiphi->resize(idx+1);
+    outTree_.ETLmatchedClusters_idx->resize(idx+1);
+    outTree_.ETLmatchedClusters_energy->resize(idx+1);
+    outTree_.ETLmatchedClusters_energyCorr->resize(idx+1);
+    outTree_.ETLmatchedClusters_time->resize(idx+1);
+    outTree_.ETLmatchedClusters_rr->resize(idx+1);
+    outTree_.ETLmatchedClusters_module->resize(idx+1);
+    outTree_.ETLmatchedClusters_modType->resize(idx+1);
+    outTree_.ETLmatchedClusters_crystal->resize(idx+1);
+    outTree_.ETLmatchedClusters_ieta->resize(idx+1);
+    outTree_.ETLmatchedClusters_iphi->resize(idx+1);
+    outTree_.ETLmatchedClusters_size->resize(idx+1);
+    outTree_.ETLmatchedClusters_size_x->resize(idx+1);
+    outTree_.ETLmatchedClusters_size_y->resize(idx+1);
+    outTree_.ETLmatchedClusters_local_x->resize(idx+1);
+    outTree_.ETLmatchedClusters_local_y->resize(idx+1);
+    outTree_.ETLmatchedClusters_local_z->resize(idx+1);
+    outTree_.ETLmatchedClusters_global_R->resize(idx+1);
+    outTree_.ETLmatchedClusters_track_Deta->resize(idx+1);
+    outTree_.ETLmatchedClusters_track_Dphi->resize(idx+1);
+    outTree_.ETLmatchedClusters_track_DR->resize(idx+1);
+    outTree_.ETLmatchedClusters_track_Dz->resize(idx+1);
+    outTree_.ETLmatchedClusters_track_RDphi->resize(idx+1);
+    outTree_.ETLmatchedClusters_track_dist->resize(idx+1);
         
     //---get compatible layers/Dets
     std::vector<GlobalPoint> gp_ext;
