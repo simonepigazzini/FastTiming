@@ -66,9 +66,9 @@ if 'barzflat' in options.crysLayout:
 process = cms.Process('FTLDumpHits',myera)
 
 process.options = cms.untracked.PSet(
-    allowUnscheduled = cms.untracked.bool(True)
-    numberOfThreads=cms.untracked.uint32(options.nThreads)
-    numberOfStreams=cms.untracked.uint32(0)
+    allowUnscheduled = cms.untracked.bool(True),
+    numberOfThreads=cms.untracked.uint32(options.nThreads),
+    numberOfStreams=cms.untracked.uint32(0),
     wantSummary = cms.untracked.bool(True)
     )
 
