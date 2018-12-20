@@ -22,6 +22,11 @@
 <use   name="Geometry/CaloGeometry"/>
 <use   name="TrackPropagation/SteppingHelixPropagator"/>
 <use   name="TrackingTools/KalmanUpdators"/>
+<use   name="TrackingTools/TrackRefitter"/>
+<use   name="TrackingTools/MaterialEffects"/>
+<use   name="TrackingTools/Records"/>
+<use   name="TrackingTools/TransientTrack"/>
+<use   name="TrackingTools/TrajectoryState"/>
 <use   name="RecoEcal/EgammaCoreTools"/>
 <use   name="RecoEgamma/EgammaMCTools"/>
 <use   name="RecoMTD/Records"/>
