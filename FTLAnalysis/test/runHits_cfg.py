@@ -43,6 +43,11 @@ options.register('runMTDReco',
                  VarParsing.multiplicity.singleton,
                  VarParsing.varType.bool,
                  "Run MTD Reco")
+options.register('useMTDTrack',
+                 False,
+                 VarParsing.multiplicity.singleton,
+                 VarParsing.varType.bool,
+                 "Use MTD Track")
 options.register('crysLayout',
                  '',
                  VarParsing.multiplicity.singleton,
@@ -153,7 +158,7 @@ process.source.duplicateCheckMode = cms.untracked.string('noDuplicateCheck')
                             
 process.load('PrecisionTiming.FTLAnalysis.FTLDumpHits_cfi')
 FTLDumper = process.FTLDumpHits
-if (options.runMTDReco):
+if (options.useMTDTrack):
     FTLDumper.tracksTag = cms.untracked.InputTag("trackExtenderWithMTD")
 
 if 'tile' in options.crysLayout:
