@@ -14,5 +14,7 @@ FTLDumpHits = cms.EDAnalyzer('FTLDumpHits',
                              track_hit_DRMax = cms.double(0.05),
                              track_hit_distMax = cms.double(99999.),
                              treeName = cms.untracked.string("DumpHits"),
-                             verbosity = cms.bool(False)
+                             verbosity = cms.bool(False),
+                             dumpSimHits = cms.bool(False),
+                             dumpRecHits = cms.bool(False)
                              )
