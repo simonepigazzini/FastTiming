@@ -5,7 +5,7 @@ import subprocess
 
 def goodTrack(evt, itrack):
     #acceptance cuts
-    if (evt.track_pt[itrack]<2.):
+    if (evt.track_pt[itrack]<0.7):
         return False
     if (abs(evt.track_eta[itrack])>3.):
         return False
@@ -14,8 +14,8 @@ def goodTrack(evt, itrack):
         return False
     if (abs(evt.track_pt[itrack]/evt.track_mcMatch_genPt[itrack]-1.)>0.1):
         return False
-    if (evt.track_eta_atBTL[itrack]<-100 and evt.track_eta_atETL[itrack]<-100):
-        return False
+#    if (evt.track_eta_atBTL[itrack]<-100 and evt.track_eta_atETL[itrack]<-100):
+#        return False
     return True
 
 parser = argparse.ArgumentParser()
@@ -25,6 +25,9 @@ parser.add_argument('--pattern',dest='pattern')
 parser.add_argument('--output',dest='output')
 parser.add_argument('--layout',dest='layout')
 parser.add_argument('--events',dest='events',default='-1')
+parser.add_argument('--dumpHits',dest='dumpHits')
+parser.add_argument('--dumpAll',dest='dumpAll')
+
 args = parser.parse_args()
 
 if (args.inputDir != ""):
@@ -60,10 +63,12 @@ elif args.layout == "tile":
 
 histos["track_pt"]=R.TH1F("track_pt","track_pt",100,0.,10.)
 histos["track_eta"]=R.TH1F("track_eta","track_eta",100,0.,3,)
+histos["track_eta_lowPt"]=R.TH1F("track_eta_lowPt","track_eta_lowPt",100,0.,3,)
 histos["track_phi"]=R.TH1F("track_phi","track_phi",100,-M.pi,M.pi)
 
 histos["mtdTrack_pt"]=R.TH1F("mtdTrack_pt","mtdTrack_pt",100,0.,10.)
 histos["mtdTrack_eta"]=R.TH1F("mtdTrack_eta","mtdTrack_eta",100,0.,3,)
+histos["mtdTrack_eta_lowPt"]=R.TH1F("mtdTrack_eta_lowPt","mtdTrack_eta_lowPt",100,0.,3,)
 histos["mtdTrack_phi"]=R.TH1F("mtdTrack_phi","mtdTrack_phi",100,-M.pi,M.pi)
 histos["mtdTrack_dt"]=R.TH1F("mtdTrack_dt","mtdTrack_dt",100,-0.2,0.2)
 histos["mtdTrack_dt_vs_pt"]=R.TH2F("mtdTrack_dt_vs_pt","mtdTrack_dt_vs_pt",50,0,10,100,-0.2,0.2)
@@ -79,6 +84,7 @@ histos["mtdTrack_ptRes_vs_eta"]=R.TH2F("mtdTrack_ptRes_vs_eta","mtdTrack_ptRes_v
 for det in ["BTL","ETL"]:
     histos[det+"track_pt"]= R.TH1F (det+"track_pt" ,det+"track_pt",100,0.,10.)
     histos[det+"track_eta"]=R.TH1F(det+"track_eta",det+"track_eta",100,0.,3,)
+    histos[det+"track_eta_lowPt"]=R.TH1F(det+"track_eta_lowPt",det+"track_eta_lowPt",100,0.,3,)
     histos[det+"track_phi"]=R.TH1F(det+"track_phi",det+"track_phi",100,-M.pi,M.pi)
 
     histos[det+"matchedTrack_nCluster"]=R.TH1F(det+"matchedTrack_nCluster",det+"matchedTrack_nCluster",10,0.,10.)
@@ -99,7 +105,9 @@ for det in ["BTL","ETL"]:
     histos[det+"matchedClusterTrack_phi"]=R.TH1F(det+"matchedClusterTrack_phi",det+"matchedClusterTrack_phi",100,-M.pi,M.pi)
     histos[det+"matchedBestClusterTrack_pt"]=R.TH1F(det+"matchedBestClusterTrack_pt",det+"matchedBestClusterTrack_pt",100,0.,10.)
     histos[det+"matchedBestClusterTrack_eta"]=R.TH1F(det+"matchedBestClusterTrack_eta",det+"matchedBestClusterTrack_eta",100,0.,3,)
+    histos[det+"matchedBestClusterTrack_eta_lowPt"]=R.TH1F(det+"matchedBestClusterTrack_eta_lowPt",det+"matchedBestClusterTrack_eta_lowPt",100,0.,3,)
     histos[det+"matchedBestClusterTrack_phi"]=R.TH1F(det+"matchedBestClusterTrack_phi",det+"matchedBestClusterTrack_phi",100,-M.pi,M.pi)
+
     histos[det+"matchedRecHitTrack_pt"]=R.TH1F(det+"matchedRecHitTrack_pt",det+"matchedRecHitTrack_pt",100,0.,10.)
     histos[det+"matchedRecHitTrack_eta"]=R.TH1F(det+"matchedRecHitTrack_eta",det+"matchedRecHitTrack_eta",100,0.,3,)
     histos[det+"matchedRecHitTrack_phi"]=R.TH1F(det+"matchedRecHitTrack_phi",det+"matchedRecHitTrack_phi",100,-M.pi,M.pi)
@@ -121,7 +129,11 @@ for det in ["BTL","ETL"]:
     histos[det+"bestCluster_time_vs_pt"]=R.TH2F(det+"bestCluster_time_vs_pt",det+"bestCluster_time_vs_pt",50,0,10,100,0,25)
     histos[det+"bestCluster_time_vs_eta"]=R.TH2F(det+"bestCluster_time_vs_eta",det+"bestCluster_time_vs_eta",80,0,3,100,0,25)
     histos[det+"bestCluster_DR"]=R.TH1F(det+"bestCluster_DR",det+"bestCluster_DR",100,0.,0.05)
+    histos[det+"bestCluster_DEta"]=R.TH1F(det+"bestCluster_DEta",det+"bestCluster_DEta",100,0.,0.05)
+    histos[det+"bestCluster_DPhi"]=R.TH1F(det+"bestCluster_DPhi",det+"bestCluster_DPhi",100,0.,0.05)
     histos[det+"bestCluster_hasMTD_DR"]=R.TH1F(det+"bestCluster_hasMTD_DR",det+"bestCluster_hasMTD_DR",100,0.,0.05)
+    histos[det+"bestCluster_hasMTD_DEta"]=R.TH1F(det+"bestCluster_hasMTD_DEta",det+"bestCluster_hasMTD_DEta",100,0.,0.05)
+    histos[det+"bestCluster_hasMTD_DPhi"]=R.TH1F(det+"bestCluster_hasMTD_DPhi",det+"bestCluster_hasMTD_DPhi",100,0.,0.05)
     histos[det+"bestCluster_size"]=R.TH1F(det+"bestCluster_size",det+"bestCluster_size",20,0.,20.)
     histos[det+"bestCluster_size_vs_pt"]=R.TH2F(det+"bestCluster_size_vs_pt",det+"bestCluster_size_vs_pt",100,0.,10.,20,-0.5,19.5)
     histos[det+"bestCluster_size_vs_eta"]=R.TH2F(det+"bestCluster_size_vs_eta",det+"bestCluster_size_vs_eta",100,0.,3,20,-0.5,19.5)
@@ -141,28 +153,36 @@ for det in ["BTL","ETL"]:
 det_id = { 'BTL':1  , 'ETL':2 }
 etaCut = { 'BTL':[0,1.5]  , 'ETL':[1.5,3] }
 
+if (args.dumpAll):
+    print "Dumping also non matched MTD hits"
+
+if (args.dumpHits):
+    print "Dumping RecHits"
+
 for ievent,event in enumerate(dh):
     if (int(args.events) != -1 and ievent>int(args.events)):
         break
-    if (ievent%1 ==0):
+    if (ievent%1==0):
         print "Analysing event %d"%ievent
-
-    for det in ["BTL","ETL"]:
-        for iclus in range(0,event.clusters_n):
-            if ( event.clusters_det[iclus] !=  det_id[det] ):
-                continue 
-            histos[det+"cluster_energy"].Fill(event.clusters_energy[iclus])
-            histos[det+"cluster_time"].Fill(event.clusters_time[iclus])
-            histos[det+"cluster_size"].Fill(event.clusters_size[iclus])
-            histos[det+"cluster_sizeX"].Fill(event.clusters_size_x[iclus])
-            histos[det+"cluster_sizeY"].Fill(event.clusters_size_y[iclus])
-            histos[det+"cluster_seedEnergyRatio"].Fill(event.clusters_seed_energy[iclus]/event.clusters_energy[iclus])
-            
-            for ihit in range(0,event.recHits_n):
-                if ( event.recHits_det[ihit] !=  det_id[det] ):
+    
+    if (args.dumpAll):    
+        for det in ["BTL","ETL"]:
+            for iclus in range(0,event.clusters_n):
+                if ( event.clusters_det[iclus] !=  det_id[det] ):
                     continue 
-            histos[det+"recHit_energy"].Fill(event.recHits_energy[ihit])
-            histos[det+"recHit_time"].Fill(event.recHits_time[ihit])
+                histos[det+"cluster_energy"].Fill(event.clusters_energy[iclus])
+                histos[det+"cluster_time"].Fill(event.clusters_time[iclus])
+                histos[det+"cluster_size"].Fill(event.clusters_size[iclus])
+                histos[det+"cluster_sizeX"].Fill(event.clusters_size_x[iclus])
+                histos[det+"cluster_sizeY"].Fill(event.clusters_size_y[iclus])
+                histos[det+"cluster_seedEnergyRatio"].Fill(event.clusters_seed_energy[iclus]/event.clusters_energy[iclus])
+
+            if (args.dumpHits):    
+                for ihit in range(0,event.recHits_n):
+                    if ( event.recHits_det[ihit] !=  det_id[det] ):
+                        continue 
+                    histos[det+"recHit_energy"].Fill(event.recHits_energy[ihit])
+                    histos[det+"recHit_time"].Fill(event.recHits_time[ihit])
 
     for itrack in range(0,len(event.track_idx)):
         if (not goodTrack(event,itrack)):
@@ -170,12 +190,16 @@ for ievent,event in enumerate(dh):
 
         histos["track_pt"].Fill(event.track_pt[itrack])
         histos["track_eta"].Fill(abs(event.track_eta[itrack]))
+        if (event.track_pt[itrack]<1.):
+            histos["track_eta_lowPt"].Fill(abs(event.track_eta[itrack]))
         histos["track_phi"].Fill(event.track_phi[itrack])
         
         if (event.track_hasMTD[itrack]>0):
             t_off = t_offset['BTL'] if event.track_eta_atBTL[itrack]>-100. else t_offset['ETL']
             histos["mtdTrack_pt"].Fill(event.track_pt[itrack])
             histos["mtdTrack_eta"].Fill(abs(event.track_eta[itrack]))
+            if (event.track_pt[itrack]<1.):
+                histos["mtdTrack_eta_lowPt"].Fill(abs(event.track_eta[itrack]))
             histos["mtdTrack_phi"].Fill(event.track_phi[itrack])
             histos["mtdTrack_dt"].Fill(event.track_t[itrack]-event.track_mcMatch_genVtx_t[itrack]-t_off)
             histos["mtdTrack_dt_vs_pt"].Fill(event.track_pt[itrack],event.track_t[itrack]-event.track_mcMatch_genVtx_t[itrack]-t_off)
@@ -196,6 +220,8 @@ for ievent,event in enumerate(dh):
             
             histos[det+"track_pt"].Fill(event.track_pt[itrack])
             histos[det+"track_eta"].Fill(abs(event.track_eta[itrack]))
+            if (event.track_pt[itrack]<1.):
+                histos[det+"track_eta_lowPt"].Fill(abs(event.track_eta[itrack]))
             histos[det+"track_phi"].Fill(event.track_phi[itrack])
 
             goodClusters=0
@@ -230,8 +256,12 @@ for ievent,event in enumerate(dh):
                 histos[det+"bestCluster_time_vs_pt"].Fill(event.track_pt[itrack],event.matchedClusters_time[itrack][bestClus])
                 histos[det+"bestCluster_time_vs_eta"].Fill(abs(event.track_eta[itrack]),event.matchedClusters_time[itrack][bestClus])
                 histos[det+"bestCluster_DR"].Fill(event.matchedClusters_track_DR[itrack][bestClus])
+                histos[det+"bestCluster_DEta"].Fill(event.matchedClusters_track_Deta[itrack][bestClus])
+                histos[det+"bestCluster_DPhi"].Fill(event.matchedClusters_track_Dphi[itrack][bestClus])
                 if (event.track_hasMTD[itrack]>0):
                     histos[det+"bestCluster_hasMTD_DR"].Fill(event.matchedClusters_track_DR[itrack][bestClus])
+                    histos[det+"bestCluster_hasMTD_DEta"].Fill(event.matchedClusters_track_Deta[itrack][bestClus])
+                    histos[det+"bestCluster_hasMTD_DPhi"].Fill(event.matchedClusters_track_Dphi[itrack][bestClus])
                 histos[det+"bestCluster_size"].Fill(event.matchedClusters_size[itrack][bestClus])
                 histos[det+"bestCluster_size_vs_pt"].Fill(event.track_pt[itrack],event.matchedClusters_size[itrack][bestClus])
                 histos[det+"bestCluster_size_vs_eta"].Fill(event.track_eta[itrack],event.matchedClusters_size[itrack][bestClus])
@@ -239,41 +269,45 @@ for ievent,event in enumerate(dh):
                 histos[det+"bestCluster_sizeY"].Fill(event.matchedClusters_size_y[itrack][bestClus])
                 histos[det+"matchedBestClusterTrack_pt"].Fill(event.track_pt[itrack])
                 histos[det+"matchedBestClusterTrack_eta"].Fill(abs(event.track_eta[itrack]))
+                if (event.track_pt[itrack]<1.):
+                    histos[det+"matchedBestClusterTrack_eta_lowPt"].Fill(abs(event.track_eta[itrack]))
                 histos[det+"matchedBestClusterTrack_phi"].Fill(event.track_phi[itrack])
-            
-            goodRecHits=0
-            bestHit=-1
-            bestDR=9999
-            for ihit in range(0,event.matchedRecHits_n[itrack]):
-                if (event.matchedRecHits_time[itrack][ihit]>20):
-                    continue
-                if (event.matchedRecHits_det[itrack][ihit]!=det_id[det]):
-                    continue
-                goodRecHits=goodRecHits+1
-                if (event.matchedRecHits_track_DR[itrack][ihit]<bestDR):
-                    bestDR=event.matchedRecHits_track_DR[itrack][ihit]
-                    bestHit=ihit
-                histos[det+"matchedRecHit_energy"].Fill(event.matchedRecHits_energy[itrack][ihit])
-                histos[det+"matchedRecHit_time"].Fill(event.matchedRecHits_time[itrack][ihit])
-                histos[det+"matchedRecHit_DR"].Fill(event.matchedRecHits_track_DR[itrack][ihit])
-                
-            if (goodRecHits>0):
-                histos[det+"matchedRecHitTrack_pt"].Fill(event.track_pt[itrack])
-                histos[det+"matchedRecHitTrack_eta"].Fill(abs(event.track_eta[itrack]))
-                histos[det+"matchedRecHitTrack_phi"].Fill(event.track_phi[itrack])
-                    
-            if (bestHit>=0):
-                histos[det+"bestRecHit_energy"].Fill(event.matchedRecHits_energy[itrack][bestHit])
-                histos[det+"bestRecHit_time"].Fill(event.matchedRecHits_time[itrack][bestHit])
-                histos[det+"bestRecHit_DR"].Fill(event.matchedRecHits_track_DR[itrack][bestHit])
-                histos[det+"bestRecHit_time_vs_pt"].Fill(event.track_pt[itrack],event.matchedRecHits_time[itrack][bestHit])
-                histos[det+"bestRecHit_time_vs_eta"].Fill(abs(event.track_eta[itrack]),event.matchedRecHits_time[itrack][bestHit])
-                histos[det+"matchedBestRecHitTrack_pt"].Fill(event.track_pt[itrack])
-                histos[det+"matchedBestRecHitTrack_eta"].Fill(abs(event.track_eta[itrack]))
-                histos[det+"matchedBestRecHitTrack_phi"].Fill(event.track_phi[itrack])
-                    
+
             histos[det+"matchedTrack_nCluster"].Fill(goodClusters)
-            histos[det+"matchedTrack_nRecHits"].Fill(goodRecHits)
+
+            if (args.dumpHits):    
+                goodRecHits=0
+                bestHit=-1
+                bestDR=9999
+                for ihit in range(0,event.matchedRecHits_n[itrack]):
+                    if (event.matchedRecHits_time[itrack][ihit]>20):
+                        continue
+                    if (event.matchedRecHits_det[itrack][ihit]!=det_id[det]):
+                        continue
+                    goodRecHits=goodRecHits+1
+                    if (event.matchedRecHits_track_DR[itrack][ihit]<bestDR):
+                        bestDR=event.matchedRecHits_track_DR[itrack][ihit]
+                        bestHit=ihit
+                    histos[det+"matchedRecHit_energy"].Fill(event.matchedRecHits_energy[itrack][ihit])
+                    histos[det+"matchedRecHit_time"].Fill(event.matchedRecHits_time[itrack][ihit])
+                    histos[det+"matchedRecHit_DR"].Fill(event.matchedRecHits_track_DR[itrack][ihit])
+                
+                    if (goodRecHits>0):
+                        histos[det+"matchedRecHitTrack_pt"].Fill(event.track_pt[itrack])
+                        histos[det+"matchedRecHitTrack_eta"].Fill(abs(event.track_eta[itrack]))
+                        histos[det+"matchedRecHitTrack_phi"].Fill(event.track_phi[itrack])
+                    
+                    if (bestHit>=0):
+                        histos[det+"bestRecHit_energy"].Fill(event.matchedRecHits_energy[itrack][bestHit])
+                        histos[det+"bestRecHit_time"].Fill(event.matchedRecHits_time[itrack][bestHit])
+                        histos[det+"bestRecHit_DR"].Fill(event.matchedRecHits_track_DR[itrack][bestHit])
+                        histos[det+"bestRecHit_time_vs_pt"].Fill(event.track_pt[itrack],event.matchedRecHits_time[itrack][bestHit])
+                        histos[det+"bestRecHit_time_vs_eta"].Fill(abs(event.track_eta[itrack]),event.matchedRecHits_time[itrack][bestHit])
+                        histos[det+"matchedBestRecHitTrack_pt"].Fill(event.track_pt[itrack])
+                        histos[det+"matchedBestRecHitTrack_eta"].Fill(abs(event.track_eta[itrack]))
+                        histos[det+"matchedBestRecHitTrack_phi"].Fill(event.track_phi[itrack])
+
+                histos[det+"matchedTrack_nRecHits"].Fill(goodRecHits)
 
 for det in ["BTL","ETL"]:
     histos[det+"effCluster_pt"]=R.TGraphAsymmErrors( histos[det+"matchedClusterTrack_pt"], histos[det+"track_pt"])
@@ -282,9 +316,12 @@ for det in ["BTL","ETL"]:
 
     histos[det+"effBestCluster_pt"]=R.TGraphAsymmErrors( histos[det+"matchedBestClusterTrack_pt"], histos[det+"track_pt"])
     histos[det+"effBestCluster_eta"]=R.TGraphAsymmErrors(histos[det+"matchedBestClusterTrack_eta"],histos[det+"track_eta"])
+    histos[det+"effBestCluster_eta_lowPt"]=R.TGraphAsymmErrors(histos[det+"matchedBestClusterTrack_eta_lowPt"],histos[det+"track_eta_lowPt"])
     histos[det+"effBestCluster_phi"]=R.TGraphAsymmErrors(histos[det+"matchedBestClusterTrack_phi"],histos[det+"track_phi"])
 
     histos[det+"effMtd_DR"]=R.TGraphAsymmErrors( histos[det+"bestCluster_hasMTD_DR"], histos[det+"bestCluster_DR"])
+    histos[det+"effMtd_DEta"]=R.TGraphAsymmErrors( histos[det+"bestCluster_hasMTD_DEta"], histos[det+"bestCluster_DEta"])
+    histos[det+"effMtd_DPhi"]=R.TGraphAsymmErrors( histos[det+"bestCluster_hasMTD_DPhi"], histos[det+"bestCluster_DPhi"])
 
     histos[det+"effRecHit_pt"]=R.TGraphAsymmErrors( histos[det+"matchedRecHitTrack_pt"],histos [det+"track_pt"])
     histos[det+"effRecHit_eta"]=R.TGraphAsymmErrors(histos[det+"matchedRecHitTrack_eta"],histos[det+"track_eta"])
@@ -296,6 +333,7 @@ for det in ["BTL","ETL"]:
 
 histos["effMtd_pt"]= R.TGraphAsymmErrors(histos["mtdTrack_pt"],histos["track_pt"])
 histos["effMtd_eta"]=R.TGraphAsymmErrors(histos["mtdTrack_eta"],histos["track_eta"])
+histos["effMtd_eta_lowPt"]=R.TGraphAsymmErrors(histos["mtdTrack_eta_lowPt"],histos["track_eta_lowPt"])
 histos["effMtd_phi"]=R.TGraphAsymmErrors(histos["mtdTrack_phi"],histos["track_phi"])
 
 fOut=R.TFile(args.output,"RECREATE")

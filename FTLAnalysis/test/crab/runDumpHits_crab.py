@@ -72,7 +72,7 @@ def main():
         
         config.JobType.pluginName = 'Analysis'
         config.JobType.psetName = 'runHits_cfg.py'
-        config.JobType.pyCfgParams = ['useMTDTrack=True','crysLayout=barzflat','output=DumpHits.root']
+        config.JobType.pyCfgParams = ['useMTDTrack=False','crysLayout=barzflat','output=DumpHits_noMTD.root']
 
         config.Data.inputDataset = None
         config.Data.inputDBS = 'phys03'
@@ -80,7 +80,7 @@ def main():
         config.Data.unitsPerJob = 1
         config.Data.outLFNDirBase = '/store/user/meridian/MTD'
         config.Data.publication = False
-        config.Data.outputDatasetTag = '10_4_0_mtd3_runHits_analysis_v5'
+        config.Data.outputDatasetTag = '10_4_0_mtd3_runHits_analysis_v7'
         config.Data.allowNonValidInputDataset = True
         config.Data.useParent = True
 
@@ -99,16 +99,27 @@ def main():
 #### V2 ### chi2 cut @ 50
 #            '/RelValSinglePiFlatPt_0p7to10_pythia8_cfi/meridian-RelValSinglePiFlatPt0p7to10pythia8cfiCMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v2V2-479d09f3e9ff3659dd49d9006e28a0a3/USER',
 #### V3 ### chi2 cut @ 1000
-#            '/RelValSinglePiFlatPt_0p7to10_pythia8_cfi/meridian-RelValSinglePiFlatPt0p7to10pythia8cfiCMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v2V3-479d09f3e9ff3659dd49d9006e28a0a3/USER'
+#            '/RelValSinglePiFlatPt_0p7to10_pythia8_cfi/meridian-RelValSinglePiFlatPt0p7to10pythia8cfiCMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v2V3-479d09f3e9ff3659dd49d9006e28a0a3/USER',
 #            '/RelValDYToLL_M_50_14TeV/meridian-RelValDYToLLM5014TeVCMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v1V3-479d09f3e9ff3659dd49d9006e28a0a3/USER',
 #            '/RelValMinBias_14TeV/meridian-RelValMinBias14TeVCMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v1V3-479d09f3e9ff3659dd49d9006e28a0a3/USER',
 #            '/RelValSingleMuFlatPt_0p7to10_pythia8/meridian-RelValSingleMuFlatPt0p7to10pythia8CMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v2V3-479d09f3e9ff3659dd49d9006e28a0a3/USER',
 #            '/RelValSingleKaonFlatPt_0p7to10/meridian-RelValSingleKaonFlatPt0p7to10CMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v1V3-479d09f3e9ff3659dd49d9006e28a0a3/USER',
 #            '/RelValSingleProtonFlatPt_0p7to10/meridian-RelValSingleProtonFlatPt0p7to10CMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v1V3-479d09f3e9ff3659dd49d9006e28a0a3/USER',
-            '/RelValDYToLL_M_50_14TeV/meridian-RelValDYToLLM5014TeVCMSSW1040mtd2patch1-PU25ns103Xupgrade2023realisticv22023D35PU200-v1V3-479d09f3e9ff3659dd49d9006e28a0a3/USER',
+#            '/RelValDYToLL_M_50_14TeV/meridian-RelValDYToLLM5014TeVCMSSW1040mtd2patch1-PU25ns103Xupgrade2023realisticv22023D35PU200-v1V3-479d09f3e9ff3659dd49d9006e28a0a3/USER',
 #            '/DYToLL_M-50_14TeV_pythia8/meridian-DYToLLM-5014TeVpythia8PhaseIIMTDTDRAutumn18DR-PU200pilot103Xupgrade2023realisticv2ext2-v2V3-479d09f3e9ff3659dd49d9006e28a0a3/USER',
-#            '/RelValNuGun/meridian-RelValNuGunCMSSW1040mtd2patch1-PU25ns103Xupgrade2023realisticv22023D35PU200-v1V3-479d09f3e9ff3659dd49d9006e28a0a3/USER',
+#            '/RelValNuGun/meridian-RelValNuGunCMSSW1040mtd2patch1-PU25ns103Xupgrade2023realisticv22023D35PU200-v1V3-479d09f3e9ff3659dd49d9006e28a0a3/USE',
 #            '/RelValSingleMuFlatPt_0p7to10/meridian-RelValSingleMuFlatPt0p7to10CMSSW1040mtd2patch1-PU25ns103Xupgrade2023realisticv22023D35PU200-v1V3-479d09f3e9ff3659dd49d9006e28a0a3/USER'
+### V4 chi2=50
+            '/RelValSingleProtonFlatPt_0p7to10/meridian-RelValSingleProtonFlatPt0p7to10CMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v1V4-479d09f3e9ff3659dd49d9006e28a0a3/USER',
+            '/RelValSinglePiFlatPt_0p7to10_pythia8_cfi/meridian-RelValSinglePiFlatPt0p7to10pythia8cfiCMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v2V4-479d09f3e9ff3659dd49d9006e28a0a3/USER',
+            '/RelValSingleMuFlatPt_0p7to10_pythia8/meridian-RelValSingleMuFlatPt0p7to10pythia8CMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v2V4-479d09f3e9ff3659dd49d9006e28a0a3/USER',
+            '/RelValSingleMuFlatPt_0p7to10/meridian-RelValSingleMuFlatPt0p7to10CMSSW1040mtd2patch1-PU25ns103Xupgrade2023realisticv22023D35PU200-v1V4-479d09f3e9ff3659dd49d9006e28a0a3/USER',
+            '/RelValSingleKaonFlatPt_0p7to10/meridian-RelValSingleKaonFlatPt0p7to10CMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v1V4-479d09f3e9ff3659dd49d9006e28a0a3/USER',
+            '/RelValNuGun/meridian-RelValNuGunCMSSW1040mtd2patch1-PU25ns103Xupgrade2023realisticv22023D35PU200-v1V4-479d09f3e9ff3659dd49d9006e28a0a3/USER',
+            '/RelValMinBias_14TeV/meridian-RelValMinBias14TeVCMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v1V4-479d09f3e9ff3659dd49d9006e28a0a3/USER',
+            '/RelValDYToLL_M_50_14TeV/meridian-RelValDYToLLM5014TeVCMSSW1040mtd2patch1-PU25ns103Xupgrade2023realisticv22023D35PU200-v1V4-479d09f3e9ff3659dd49d9006e28a0a3/USER',
+            '/RelValDYToLL_M_50_14TeV/meridian-RelValDYToLLM5014TeVCMSSW1040mtd2patch1-103Xupgrade2023realisticv22023D35noPU-v1V4-479d09f3e9ff3659dd49d9006e28a0a3/USER'
+            '/DYToLL_M-50_14TeV_pythia8/meridian-DYToLLM-5014TeVpythia8PhaseIIMTDTDRAutumn18DR-PU200pilot103Xupgrade2023realisticv2ext2-v2V4-479d09f3e9ff3659dd49d9006e28a0a3/USER'
             ]
 
         for inDS in inputDatasets:
@@ -116,7 +127,7 @@ def main():
             config.General.requestName = 'runHits_%s' % (inDS.split('/')[1])
             config.General.requestName = config.General.requestName.translate(None, '_')
             config.Data.inputDataset = inDS
-            config.Data.outputDatasetTag = '%s_v3' % (config.General.requestName)
+            config.Data.outputDatasetTag = '%s_v4_noMTDTrack' % (config.General.requestName)
             # Submit.
             try:
                 print "Submitting for input dataset %s" % (inDS)

@@ -92,13 +92,13 @@ def main():
 
         # Will submit one task for each of these input datasets.
         inputDatasets = [
-                         '/RelValDYToLL_M_50_14TeV/CMSSW_10_4_0_mtd2_patch1-103X_upgrade2023_realistic_v2_2023D35noPU-v1/GEN-SIM-RECO',
-                          '/RelValDYToLL_M_50_14TeV/CMSSW_10_4_0_mtd2_patch1-PU25ns_103X_upgrade2023_realistic_v2_2023D35PU200-v1/GEN-SIM-RECO',
+#                         '/RelValDYToLL_M_50_14TeV/CMSSW_10_4_0_mtd2_patch1-103X_upgrade2023_realistic_v2_2023D35noPU-v1/GEN-SIM-RECO',
+#                          '/RelValDYToLL_M_50_14TeV/CMSSW_10_4_0_mtd2_patch1-PU25ns_103X_upgrade2023_realistic_v2_2023D35PU200-v1/GEN-SIM-RECO',
                           '/RelValSingleMuFlatPt_0p7to10/CMSSW_10_4_0_mtd2_patch1-PU25ns_103X_upgrade2023_realistic_v2_2023D35PU200-v1/GEN-SIM-RECO',
                           '/RelValNuGun/CMSSW_10_4_0_mtd2_patch1-PU25ns_103X_upgrade2023_realistic_v2_2023D35PU200-v1/GEN-SIM-RECO',
-#                          '/RelValMinBias_14TeV/CMSSW_10_4_0_mtd2_patch1-103X_upgrade2023_realistic_v2_2023D35noPU-v1/GEN-SIM-RECO',
-#                          '/RelValSingleMuFlatPt_0p7to10_pythia8/CMSSW_10_4_0_mtd2_patch1-103X_upgrade2023_realistic_v2_2023D35noPU-v2/GEN-SIM-RECO',
-#                          '/RelValSinglePiFlatPt_0p7to10_pythia8_cfi/CMSSW_10_4_0_mtd2_patch1-103X_upgrade2023_realistic_v2_2023D35noPU-v2/GEN-SIM-RECO',
+                          '/RelValMinBias_14TeV/CMSSW_10_4_0_mtd2_patch1-103X_upgrade2023_realistic_v2_2023D35noPU-v1/GEN-SIM-RECO',
+                          '/RelValSingleMuFlatPt_0p7to10_pythia8/CMSSW_10_4_0_mtd2_patch1-103X_upgrade2023_realistic_v2_2023D35noPU-v2/GEN-SIM-RECO',
+                          '/RelValSinglePiFlatPt_0p7to10_pythia8_cfi/CMSSW_10_4_0_mtd2_patch1-103X_upgrade2023_realistic_v2_2023D35noPU-v2/GEN-SIM-RECO',
                           '/RelValSingleKaonFlatPt_0p7to10/CMSSW_10_4_0_mtd2_patch1-103X_upgrade2023_realistic_v2_2023D35noPU-v1/GEN-SIM-RECO',
                           '/RelValSingleProtonFlatPt_0p7to10/CMSSW_10_4_0_mtd2_patch1-103X_upgrade2023_realistic_v2_2023D35noPU-v1/GEN-SIM-RECO',
                           '/DYToLL_M-50_14TeV_pythia8/PhaseIIMTDTDRAutumn18DR-PU200_pilot_103X_upgrade2023_realistic_v2_ext2-v2/GEN-SIM-RECO'
@@ -106,7 +106,7 @@ def main():
 
         for inDS in inputDatasets:
             # inDS is of the form /A/B/C. Since B is unique for each inDS, use this in the CRAB request name.
-            config.General.requestName = '%s_%s_V3' % (inDS.split('/')[1],inDS.split('/')[2])
+            config.General.requestName = '%s_%s_V4' % (inDS.split('/')[1],inDS.split('/')[2])
             config.General.requestName = config.General.requestName.translate(None, '_')
             config.Data.inputDataset = inDS
             config.Data.outputDatasetTag = '%s' % (config.General.requestName)
