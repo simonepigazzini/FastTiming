@@ -29,7 +29,7 @@ options.register('antipattern',
                  VarParsing.varType.string,
                  "pattern of file names not to be processed")
 options.register('output',
-                 '',
+                 'test.root',
                  VarParsing.multiplicity.singleton,
                  VarParsing.varType.string,
                  "output file name")
@@ -113,10 +113,10 @@ process.mtdGeometry.applyAlignment = cms.bool(False)
 process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 
 files = []
-files2 = []
+secondary_files = []
 for dataset in options.datasets:
     print('>> Creating list of files from: \n'+dataset)
-    query = "-query='file dataset="+dataset+"'"
+    query = "-query='file dataset="+dataset+" instance=prod/phys03'"
     if options.debug:
         print(query)
     lsCmd = subprocess.Popen(['dasgoclient '+query+' -limit=0'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
@@ -124,6 +124,15 @@ for dataset in options.datasets:
     files.extend(['root://cms-xrd-global.cern.ch/'+ifile for ifile in str_files.split("\n")])
     files = [k for k in files if options.pattern in k]
     files.pop()
+    print('>> Creating list of secondary files from: \n'+dataset)
+    for file in files:
+        query = "-query='parent file="+file[len('root://cms-xrd-global.cern.ch/'):]+" instance=prod/phys03'"
+        if options.debug:
+            print(query)
+        lsCmd = subprocess.Popen(['dasgoclient '+query+' -limit=0'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        str_files, err = lsCmd.communicate()
+        secondary_files.extend(['root://cms-xrd-global.cern.ch/'+ifile for ifile in str_files.split("\n")])        
+        secondary_files.pop()
 
 for eosdir in options.eosdirs:
     if eosdir[-1] != '/':
@@ -147,12 +156,15 @@ for eosusdir in options.eosusdirs:
         
 if options.debug:
     for ifile in files:
-        print(ifile)
+        print(ifile)        
+    for ifile in secondary_files:
+        print(ifile)        
 
 # Input source
 process.source = cms.Source(
     "PoolSource",
-    fileNames = cms.untracked.vstring(files)
+    fileNames = cms.untracked.vstring(files),
+    secondaryFileNames = cms.untracked.vstring(secondary_files)
     )
 process.source.duplicateCheckMode = cms.untracked.string('noDuplicateCheck')
                             

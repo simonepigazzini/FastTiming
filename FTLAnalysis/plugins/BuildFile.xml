@@ -27,6 +27,7 @@
 <use   name="TrackingTools/Records"/>
 <use   name="TrackingTools/TransientTrack"/>
 <use   name="TrackingTools/TrajectoryState"/>
+<use   name="SimDataFormats/TrackingAnalysis"/>
 <use   name="RecoEcal/EgammaCoreTools"/>
 <use   name="RecoEgamma/EgammaMCTools"/>
 <use   name="RecoMTD/Records"/>
