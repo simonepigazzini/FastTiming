@@ -91,7 +91,6 @@ process.maxEvents = cms.untracked.PSet(
 #     process.load('Configuration.Geometry.GeometryExtended2023D35Reco_cff')
 #     process.load('Configuration.Geometry.GeometryExtended2023D35_cff')
     
-# process.load('Configuration.StandardSequences.MagneticField_cff')
 # process.load('Configuration.StandardSequences.SimIdeal_cff')
 
 # process.load("Geometry.MTDNumberingBuilder.mtdNumberingGeometry_cfi")
@@ -127,7 +126,7 @@ for eosdir in options.eosdirs:
         eosdir += '/'
     print('>> Creating list of files from: \n'+eosdir)
     
-    command = '/bin/find '+eosdir+' -type f | grep root | grep -v failed | grep '+options.pattern
+    command = '/bin/find '+eosdir+' -type f | grep root | grep -v failed'
     str_files = subprocess.check_output(command,shell=True).splitlines()
     print str_files
     files.extend(['file:'+ifile for ifile in str_files])
@@ -155,15 +154,34 @@ process.source = cms.Source(
     secondaryFileNames = cms.untracked.vstring(secondary_files)
     )
 #process.source.duplicateCheckMode = cms.untracked.string('noDuplicateCheck')
-                            
+
+# Tracking particles
+process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService",
+                                                   mix = cms.PSet(
+                                                       initialSeed = cms.untracked.uint32(666),
+                                                       engineName = cms.untracked.string('TRandom3')
+                                                   )                                                   
+                                               )
+
+# process.load('Configuration.Geometry.GeometryExtended2023D35Reco_cff')
+# process.load('Configuration.Geometry.GeometryExtended2023D35_cff')
+# process.load("Configuration.StandardSequences.RawToDigi_cff")
+# process.load("Configuration.EventContent.EventContent_cff")
+# process.load("Configuration.StandardSequences.Reconstruction_cff")
+# process.load('Configuration.StandardSequences.MagneticField_cff')
+# process.load("SimGeneral.MixingModule.mixNoPU_cfi")
+# process.load("SimTracker.TrackAssociatorProducers.trackAssociatorByHits_cfi")
+# process.load("Validation.RecoTrack.cuts_cff")
+# process.load("Validation.RecoTrack.MultiTrackValidator_cff")
+# process.load("SimGeneral.MixingModule.trackingTruthProducer_cfi")
+# process.multiTrackValidator.associators = ['trackAssociatorByHits']
+# process.multiTrackValidator.UseAssociators = cms.bool(True)
+# process.multiTrackValidator.label = ['generalTracks']
+# process.re_tracking_and_TP = cms.Sequence(process.mix)
+                                          
+# Analyzer
 process.load('PrecisionTiming.FTLAnalysis.MTD4DVertexingAnalyzer_cfi')
 MTDDumper = process.MTD4DVertexingAnalyzer
-# if 'tile' in options.crysLayout:
-#     FTLDumper.crysLayout = cms.untracked.int32(1)
-# if 'barphi' in options.crysLayout:
-#     FTLDumper.crysLayout = cms.untracked.int32(2)
-# if 'barzflat' in options.crysLayout:
-#     FTLDumper.crysLayout = cms.untracked.int32(3)
 
 # Output TFile
 process.TFileService = cms.Service(
