@@ -16,7 +16,8 @@ using namespace std;
     DATA(float, vtx_0_z)                        \
     DATA(float, vtx_0_t)                        \
     DATA(float, vtx_0_chi2)                     \
-    DATA(float, vtx_0_ntrks)
+    DATA(float, vtx_0_ntrks)                    \
+    DATA(int, n_gen_charged)
 
 #define DATA_CLASS_TABLE                                \
     DATA(vector<int>,   trk_idx)                        \

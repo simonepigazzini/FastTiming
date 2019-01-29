@@ -29,7 +29,17 @@ using namespace std;
     DATA(float, sim_z)                          \
     DATA(float, sim_t)                          \
     DATA(int, sim_n_vtxs)                       \
-    DATA(int, sim_n_trks)                       
+    DATA(int, sim_n_trks)                       \
+    DATA(float, vtx3D_0_dz_sumpt)               \
+    DATA(float, vtx3D_0_dz_genm_sumpt)          \
+    DATA(float, vtx4D_0_dzdt_sumpt)             \
+    DATA(float, vtx4D_0_dzdt_genm_sumpt)        \
+    DATA(float, vtx3D_0_3sigma_sumpt)           \
+    DATA(float, vtx3D_0_3sigma_genm_sumpt)      \
+    DATA(float, vtx4D_0_3sigma_sumpt)           \
+    DATA(float, vtx4D_0_3sigma_genm_sumpt)      \
+    DATA(float, vtx4D_0_circle3s_sumpt)         \
+    DATA(float, vtx4D_0_circle3s_genm_sumpt)
 
 #define DATA_CLASS_TABLE                                \
     DATA(vector<int>, vtx3D_valid)                      \
@@ -40,6 +50,7 @@ using namespace std;
     DATA(vector<float>, vtx3D_ntrks_genmatch)           \
     DATA(vector<float>, vtx3D_sumpt_genmatch)           \
     DATA(vector<float>, vtx3D_sumpt)                    \
+    DATA(vector<float>, vtx3D_score_sumpt2)             \
     DATA(vector<int>, vtx4D_valid)                      \
     DATA(vector<float>, vtx4D_z)                        \
     DATA(vector<float>, vtx4D_t)                        \
@@ -48,6 +59,7 @@ using namespace std;
     DATA(vector<float>, vtx4D_ntrks_genmatch)           \
     DATA(vector<float>, vtx4D_sumpt_genmatch)           \
     DATA(vector<float>, vtx4D_sumpt)                    \
+    DATA(vector<float>, vtx4D_score_sumpt2)             \
     DATA(vector<int>, vtx4DNoPID_valid)                 \
     DATA(vector<float>, vtx4DNoPID_z)                   \
     DATA(vector<float>, vtx4DNoPID_t)                   \

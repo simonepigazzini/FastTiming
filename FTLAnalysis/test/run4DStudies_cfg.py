@@ -155,33 +155,20 @@ process.source = cms.Source(
     )
 #process.source.duplicateCheckMode = cms.untracked.string('noDuplicateCheck')
 
-# Tracking particles
-process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService",
-                                                   mix = cms.PSet(
-                                                       initialSeed = cms.untracked.uint32(666),
-                                                       engineName = cms.untracked.string('TRandom3')
-                                                   )                                                   
-                                               )
-
-# process.load('Configuration.Geometry.GeometryExtended2023D35Reco_cff')
-# process.load('Configuration.Geometry.GeometryExtended2023D35_cff')
-# process.load("Configuration.StandardSequences.RawToDigi_cff")
-# process.load("Configuration.EventContent.EventContent_cff")
-# process.load("Configuration.StandardSequences.Reconstruction_cff")
-# process.load('Configuration.StandardSequences.MagneticField_cff')
-# process.load("SimGeneral.MixingModule.mixNoPU_cfi")
-# process.load("SimTracker.TrackAssociatorProducers.trackAssociatorByHits_cfi")
-# process.load("Validation.RecoTrack.cuts_cff")
-# process.load("Validation.RecoTrack.MultiTrackValidator_cff")
-# process.load("SimGeneral.MixingModule.trackingTruthProducer_cfi")
-# process.multiTrackValidator.associators = ['trackAssociatorByHits']
-# process.multiTrackValidator.UseAssociators = cms.bool(True)
-# process.multiTrackValidator.label = ['generalTracks']
-# process.re_tracking_and_TP = cms.Sequence(process.mix)
+# final TOFPID
+from CommonTools.RecoAlgos.tofPIDProducer_cfi import tofPIDProducer
+process.tofPIDWithFinal4DVtxs = tofPIDProducer.clone()
+process.tofPIDWithFinal4DVtxs.vtxsSrc = cms.InputTag("offlinePrimaryVertices")               
                                           
 # Analyzer
 process.load('PrecisionTiming.FTLAnalysis.MTD4DVertexingAnalyzer_cfi')
 MTDDumper = process.MTD4DVertexingAnalyzer
+MTDDumper.t0TOFPIDTag = cms.untracked.InputTag("tofPIDWithFinal4DVtxs", "t0", "MTD4DVertexingStudies")
+MTDDumper.sigmat0TOFPIDTag = cms.untracked.InputTag("tofPIDWithFinal4DVtxs", "sigmat0", "MTD4DVertexingStudies")
+MTDDumper.probPiTOFPIDTag = cms.untracked.InputTag("tofPIDWithFinal4DVtxs", "probPi", "MTD4DVertexingStudies")
+MTDDumper.probPTOFPIDTag = cms.untracked.InputTag("tofPIDWithFinal4DVtxs", "probP", "MTD4DVertexingStudies")
+MTDDumper.probKTOFPIDTag = cms.untracked.InputTag("tofPIDWithFinal4DVtxs", "probK", "MTD4DVertexingStudies")
+
 
 # Output TFile
 process.TFileService = cms.Service(
@@ -190,6 +177,6 @@ process.TFileService = cms.Service(
     )
 
 
-process.runseq = cms.Sequence(MTDDumper)
+process.runseq = cms.Sequence(process.tofPIDWithFinal4DVtxs*MTDDumper)
 process.path = cms.Path(process.runseq)
 process.schedule = cms.Schedule(process.path)

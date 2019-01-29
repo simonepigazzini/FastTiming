@@ -25,6 +25,8 @@
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 
+#include "DataFormats/RecoCandidate/interface/RecoChargedRefCandidate.h"
+
 #include "SimDataFormats/Vertex/interface/SimVertex.h"
 #include "SimDataFormats/TrackingHit/interface/PSimHit.h"
 #include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
@@ -74,6 +76,9 @@ private:
     edm::Handle<edm::ValueMap<float> > extTracksMTDtimeHandle_;
     edm::EDGetTokenT<edm::ValueMap<float> > pathLengthToken_;
     edm::Handle<edm::ValueMap<float> > pathLengthHandle_;
+
+    edm::EDGetTokenT<vector<reco::RecoChargedRefCandidate> > vtxSorterTrackRefToken_;
+    edm::Handle<vector<reco::RecoChargedRefCandidate> > vtxSorterTrackRefHandle_;
     
     //---TOFPID
     edm::EDGetTokenT<edm::ValueMap<float> > t0PIDToken_;
@@ -95,12 +100,16 @@ private:
     edm::EDGetTokenT<vector<TrackingVertex> > simVtxToken_;
     edm::Handle<vector<TrackingVertex> >      simVtxHandle_;    
     edm::EDGetTokenT<vector<reco::Vertex> >   vtx3DToken_;
-    edm::Handle<vector<reco::Vertex> >        vtx3DHandle_;    
+    edm::Handle<vector<reco::Vertex> >        vtx3DHandle_;
+    edm::EDGetTokenT<edm::ValueMap<float> >   vtxScores3DToken_;
+    edm::Handle<edm::ValueMap<float> >        vtxScores3DHandle_;
     edm::EDGetTokenT<vector<reco::Vertex> >   vtx4DToken_;
     edm::Handle<vector<reco::Vertex> >        vtx4DHandle_;    
+    edm::EDGetTokenT<edm::ValueMap<float> >   vtxScores4DToken_;
+    edm::Handle<edm::ValueMap<float> >        vtxScores4DHandle_;
     edm::EDGetTokenT<vector<reco::Vertex> >   vtx4DNoPIDToken_;
     edm::Handle<vector<reco::Vertex> >        vtx4DNoPIDHandle_;    
-
+    
     //---options
 
     //---outputs
@@ -119,6 +128,7 @@ MTD4DVertexingAnalyzer::MTD4DVertexingAnalyzer(const edm::ParameterSet& pSet):
     extTracksToken_(consumes<edm::View<reco::Track> >(pSet.getUntrackedParameter<edm::InputTag>("extendedTracksTag"))),
     extTracksMTDtimeToken_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("extTracksMTDtimeTag"))),
     pathLengthToken_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("extTracksPathLengthTag"))),
+    vtxSorterTrackRefToken_(consumes<vector<reco::RecoChargedRefCandidate> >(pSet.getUntrackedParameter<edm::InputTag>("trackRefsForSorting"))),
     t0PIDToken_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("t0TOFPIDTag"))),
     sigmat0PIDToken_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("sigmat0TOFPIDTag"))),
     probPiPIDToken_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("probPiTOFPIDTag"))),
@@ -127,8 +137,10 @@ MTD4DVertexingAnalyzer::MTD4DVertexingAnalyzer(const edm::ParameterSet& pSet):
     genXYZToken_(consumes<genXYZ>(pSet.getUntrackedParameter<edm::InputTag>("genXYZTag"))),
     genT0Token_(consumes<float>(pSet.getUntrackedParameter<edm::InputTag>("genT0Tag"))),
     simVtxToken_(consumes<vector<TrackingVertex> >(pSet.getUntrackedParameter<edm::InputTag>("simVtxTag"))),    
-    vtx3DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx3DTag"))),    
+    vtx3DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx3DTag"))),
+    vtxScores3DToken_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("vtx3DTag"))),
     vtx4DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx4DTag"))),
+    vtxScores4DToken_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("vtx4DTag"))),
     vtx4DNoPIDToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx4DNoPIDTag")))        
 {
     vtxsTree_ = MTD4DTree(pSet.getUntrackedParameter<string>("vtxsTreeName").c_str(), "4D vertexing studies");
@@ -194,28 +206,46 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
     // 3D
     event.getByToken(vtx3DToken_, vtx3DHandle_);
     auto vtxs3D = *vtx3DHandle_.product();
+    event.getByToken(vtxScores3DToken_, vtxScores3DHandle_);
+    auto vtxScores3D = *vtxScores3DHandle_.product();
     // Full 4D
     event.getByToken(vtx4DToken_, vtx4DHandle_);
     auto vtxs4D = *vtx4DHandle_.product();
+    event.getByToken(vtxScores4DToken_, vtxScores4DHandle_);
+    auto vtxScores4D = *vtxScores4DHandle_.product();
     // 4D no PID
     event.getByToken(vtx4DNoPIDToken_, vtx4DNoPIDHandle_);
     auto vtxs4DNoPID = *vtx4DNoPIDHandle_.product();
 
-    //---gen sumPt of charged particle within |eta| acceptance
+    //---gen sumpt of charged particle within |eta| acceptance
+    int n_gen_charged=0;
     for(auto& part : genParticles)
     {
         if(part.status() == 1  && part.charge() != 0 && std::abs(part.eta())<4)
+        {
             vtxsTree_.gen_sumpt += part.pt();
+            if(part.pt()>0.7)
+                ++n_gen_charged;
+        }        
     }
     
     //---tracks loop
     //  - Check PID hypothesis, and vertex association comparing 4D and 4DnoPID
     std::map<int, reco::GenParticleRef> trackToGenPartMap;
+    float vtx3D_0_dz_sumpt=0, vtx4D_0_dzdt_sumpt=0;
+    float vtx3D_0_dz_genm_sumpt=0, vtx4D_0_dzdt_genm_sumpt=0;
+    float vtx3D_0_3sigma_sumpt=0, vtx4D_0_3sigma_sumpt=0, vtx4D_0_circle3s_sumpt=0;
+    float vtx3D_0_3sigma_genm_sumpt=0, vtx4D_0_3sigma_genm_sumpt=0, vtx4D_0_circle3s_genm_sumpt=0;
     for(unsigned int itrack=0; itrack<extTracks.size(); ++itrack)
     {
+        
         auto& track = extTracks[itrack];
         reco::TrackBaseRef track_ref(tracksHandle_, itrack);
         reco::TrackBaseRef ext_track_ref(extTracksHandle_, itrack);
+
+        if(track.pt() < 0.7)
+            continue;
+        
         //---get TOFPIDProducer recomputed t0,sigmat0 and particle probs
         float t_t0=-1, t_sigmat0=-1, t_probPi=-1, t_probP=-1, t_probK=-1;
         if(t0PID.contains(track_ref.id()))
@@ -294,9 +324,44 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
         trksTree_.trk_genVtx_z -> push_back(genPV.z());        
         trksTree_.trk_genVtx_t -> push_back(genPV.t());
 
-        //---compute number of gen tracks as: number of reco tracks matched to a gen particle and with dz_vtx_gen < 1 mm
-        if(DRMin < 0.03 && std::abs(genPt/track.pt()-1)<0.05 && fabs(track.vz()-genPV.z())<0.1)
-            vtxsTree_.sim_n_trks++;
+        //---compute sumpt for vtx0 of 3D and 4D collections (sigmat is wrong in CMSSW < 10_4_0_mtd5 so set i manually to 35ps)        
+        if(std::abs(track.vz()-vtxs4D[0].z()) < 0.1 && (std::abs(t_t0-vtxs4D[0].t())<(3*0.035) || t_sigmat0 == -1))
+        {
+            vtx4D_0_dzdt_sumpt += track.pt();
+            if(std::abs(genPt/track.pt()-1) < 0.05 && DRMin < 0.03)
+                vtx4D_0_dzdt_genm_sumpt += track.pt();
+        }
+        if(std::abs(track.vz()-vtxs3D[0].z()) < 0.1)
+        {
+            vtx3D_0_dz_sumpt += track.pt();
+            if(std::abs(genPt/track.pt()-1) < 0.05 && DRMin < 0.03)
+                vtx3D_0_dz_genm_sumpt += track.pt();
+        }
+
+        //---compute dz,dt significance sumpt
+        if(std::abs(track.vz()-vtxs4D[0].z()) < 3*sqrt(pow(track.dzError(), 2) + pow(vtxs4D[0].zError(),2)) &&
+           (std::abs(t_t0-vtxs4D[0].t())<(3*0.035) || t_sigmat0 == -1))
+        {
+            vtx4D_0_3sigma_sumpt += track.pt();
+            if(std::abs(genPt/track.pt()-1) < 0.05 && DRMin < 0.03)
+                vtx4D_0_3sigma_genm_sumpt += track.pt();
+        }
+        if(std::abs(track.vz()-vtxs3D[0].z()) < 3*sqrt(pow(track.dzError(), 2) + pow(vtxs3D[0].zError(),2)))
+        {
+            vtx3D_0_3sigma_sumpt += track.pt();
+            if(std::abs(genPt/track.pt()-1) < 0.05 && DRMin < 0.03)
+                vtx3D_0_3sigma_genm_sumpt += track.pt();
+        }
+        //---3 sigma cut on (dz/sigma_z)^2+(dt/sigma_t)^2
+        float dzs2 = pow(track.vz()-vtxs4D[0].z(), 2)/(pow(track.dzError(), 2) + pow(vtxs4D[0].zError(),2));
+        float dts2 = pow((t_t0-vtxs4D[0].t())/0.035, 2);
+        if((dzs2 + dts2)<9 || (dzs2<9 && t_sigmat0 == -1))
+        {
+            vtx4D_0_circle3s_sumpt += track.pt();
+            if(std::abs(genPt/track.pt()-1) < 0.05 && DRMin < 0.03)
+                vtx4D_0_circle3s_genm_sumpt += track.pt();
+        }
+
     }
 
     trksTree_.vtx_0_valid = vtxs4D[0].isValid() && !vtxs4D[0].isFake();
@@ -304,7 +369,19 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
     trksTree_.vtx_0_t = vtxs4D[0].t();
     trksTree_.vtx_0_chi2 = vtxs4D[0].chi2()/vtxs4D[0].ndof();
     trksTree_.vtx_0_ntrks = vtxs4D[0].nTracks();
-    
+    trksTree_.n_gen_charged = n_gen_charged;
+        
+    vtxsTree_.vtx3D_0_dz_sumpt = vtx3D_0_dz_sumpt;
+    vtxsTree_.vtx3D_0_dz_genm_sumpt = vtx3D_0_dz_genm_sumpt;
+    vtxsTree_.vtx4D_0_dzdt_sumpt = vtx4D_0_dzdt_sumpt;
+    vtxsTree_.vtx4D_0_dzdt_genm_sumpt = vtx4D_0_dzdt_genm_sumpt;
+    vtxsTree_.vtx3D_0_3sigma_sumpt = vtx3D_0_3sigma_sumpt;
+    vtxsTree_.vtx3D_0_3sigma_genm_sumpt = vtx3D_0_3sigma_genm_sumpt;
+    vtxsTree_.vtx4D_0_3sigma_sumpt = vtx4D_0_3sigma_sumpt;
+    vtxsTree_.vtx4D_0_3sigma_genm_sumpt = vtx4D_0_3sigma_genm_sumpt;
+    vtxsTree_.vtx4D_0_circle3s_sumpt = vtx4D_0_circle3s_sumpt;
+    vtxsTree_.vtx4D_0_circle3s_genm_sumpt = vtx4D_0_circle3s_genm_sumpt;
+        
     //---sim vertices
     //vtxsTree_.sim_n_vtxs = vtxsSim.size();
     
@@ -315,6 +392,7 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
     for(unsigned int iVtx=0; iVtx<vtxs3D.size(); ++iVtx)
     {
         auto& vtx3D = vtxs3D[iVtx];
+        reco::VertexRef vtx3D_ref(vtx3DHandle_, iVtx);
         if(vtx3D.isValid() && !vtx3D.isFake())
         {
             auto dz = std::abs(vtx3D.z()-genPV.z());
@@ -357,6 +435,7 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
         vtxsTree_.vtx3D_ntrks_genmatch->push_back(assoc_trks);
         vtxsTree_.vtx3D_sumpt_genmatch->push_back(sumpt_genmatch);        
         vtxsTree_.vtx3D_sumpt->push_back(sumpt);
+        vtxsTree_.vtx3D_score_sumpt2->push_back(vtxScores3D[vtx3D_ref]);
     }
     vtxsTree_.vtx3D_n_good = n_good_vtxs;
     vtxsTree_.vtx3D_best_dz = best3D_idx;
@@ -368,6 +447,7 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
     for(unsigned int iVtx=0; iVtx<vtxs4D.size(); ++iVtx)
     {
         auto& vtx4D = vtxs4D[iVtx];
+        reco::VertexRef vtx4D_ref(vtx4DHandle_, iVtx);
         if(vtx4D.isValid() && !vtx4D.isFake())
         {
             auto dz = std::abs(vtx4D.z()-genPV.z());
@@ -395,7 +475,7 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
 
         //---count number of gen matched tracks associated to this vertex (trackWeight > 0.5)
         int assoc_trks=0;
-        float sumpt=0, sumpt_genmatch;
+        float sumpt=0, sumpt_genmatch=0;
         for(auto trkRef=vtx4D.tracks_begin(); trkRef!=vtx4D.tracks_end(); ++trkRef)
         {
             if(vtx4D.trackWeight(*trkRef) > 0.5)
@@ -416,6 +496,7 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
         vtxsTree_.vtx4D_ntrks_genmatch->push_back(assoc_trks);
         vtxsTree_.vtx4D_sumpt_genmatch->push_back(sumpt_genmatch);        
         vtxsTree_.vtx4D_sumpt->push_back(sumpt);
+        vtxsTree_.vtx4D_score_sumpt2->push_back(vtxScores4D[vtx4D_ref]);
     }
     vtxsTree_.vtx4D_n_good = n_good_vtxs;
     vtxsTree_.vtx4D_best_dz = best4D_dz_idx;
