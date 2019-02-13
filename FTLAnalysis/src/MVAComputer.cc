@@ -11,8 +11,8 @@ MVAComputer::MVAComputer(mva_variables* vars, std::string weights_file)
 }
 
 float MVAComputer::operator() ()
-{
-    return (reader_->EvaluateMVA("BDT")+1)/2;
+{    
+    return 1./(1+sqrt(2/(1+reader_->EvaluateMVA("BDT"))-1));
 }
 
 MVAComputer& MVAComputer::operator= (MVAComputer&& other)
