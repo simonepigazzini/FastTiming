@@ -93,12 +93,10 @@ process.maxEvents = cms.untracked.PSet(
 #     process.load('Configuration.Geometry.GeometryExtended2023D25Reco_cff')
 #     process.load('Configuration.Geometry.GeometryExtended2023D25_cff')
 # if 'barzflat' in options.crysLayout:
-#     process.load('Configuration.Geometry.GeometryExtended2023D35Reco_cff')
-#     process.load('Configuration.Geometry.GeometryExtended2023D35_cff')
 process.load('Configuration.Geometry.GeometryExtended2023D35Reco_cff')
 process.load('Configuration.Geometry.GeometryExtended2023D35_cff')
     
-# process.load('Configuration.StandardSequences.SimIdeal_cff')
+process.load('Configuration.StandardSequences.SimIdeal_cff')
 
 # process.load("Geometry.MTDNumberingBuilder.mtdNumberingGeometry_cfi")
 # process.load("Geometry.MTDNumberingBuilder.mtdTopology_cfi")
@@ -183,8 +181,8 @@ process.mix.digitizers = cms.PSet(
 for a in process.aliases: delattr(process, a)
 
 # Analyzer
-process.load('PrecisionTiming.FTLAnalysis.MTD4DVertexingAnalyzer_cfi')
-MTDDumper = process.MTD4DVertexingAnalyzer
+process.load('PrecisionTiming.FTLAnalysis.TrackPUIDDumper_cfi')
+MTDDumper = process.TrackPUIDDumper
 MTDDumper.trackingParticlesTag = cms.untracked.InputTag("mix", "MergedTrackTruth", "MTD4DVertexingStudies")
 MTDDumper.trackAndTrackingParticlesAssociatorMapTag = cms.untracked.InputTag("trackingParticleRecoTrackAsssociation", "", "MTD4DVertexingStudies")
 

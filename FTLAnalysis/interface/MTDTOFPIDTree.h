@@ -12,11 +12,16 @@ using namespace std;
     DATA(int, event)                            \
     DATA(int, lumi)                             \
     DATA(int, run)                              \
-    DATA(float, vtx_0_valid)                    \
-    DATA(float, vtx_0_z)                        \
-    DATA(float, vtx_0_t)                        \
-    DATA(float, vtx_0_chi2)                     \
-    DATA(float, vtx_0_ntrks)                    \
+    DATA(float, pv4d_valid)                     \
+    DATA(float, pv4d_z)                         \
+    DATA(float, pv4d_t)                         \
+    DATA(float, pv4d_chi2)                      \
+    DATA(float, pv4d_ntrks)                     \
+    DATA(float, pv3d_valid)                     \
+    DATA(float, pv3d_z)                         \
+    DATA(float, pv3d_t)                         \
+    DATA(float, pv3d_chi2)                      \
+    DATA(float, pv3d_ntrks)                     \
     DATA(int, n_gen_charged)
 
 #define DATA_CLASS_TABLE                                \
@@ -45,6 +50,13 @@ using namespace std;
     DATA(vector<int>,   trk_numberOfValidHitsETL)       \
     DATA(vector<int>,   trk_isHighPurity)               \
     DATA(vector<int>,   trk_hasMTD)                     \
+    DATA(vector<float>,   trk_puid_3D)                  \
+    DATA(vector<float>,   trk_puid_4D)                  \
+    DATA(vector<float>, trk_simIsFromPV)                \
+    DATA(vector<float>, trk_simPt)                      \
+    DATA(vector<float>, trk_simEta)                     \
+    DATA(vector<float>, trk_simPhi)                     \
+    DATA(vector<float>, trk_simZ)                       \
     DATA(vector<float>, trk_genPdgId)                   \
     DATA(vector<float>, trk_genPt)                      \
     DATA(vector<float>, trk_genEta)                     \
@@ -54,7 +66,6 @@ using namespace std;
     DATA(vector<float>, trk_genVtx_y)                   \
     DATA(vector<float>, trk_genVtx_z)                   \
     DATA(vector<float>, trk_genVtx_t)          
-
 
 #include "ExternalTools/DynamicTTree/interface/DynamicTTreeInterface.h"
 

@@ -1,5 +1,8 @@
 <use name="root"/>
+<use name="roottmva"/>
 <use name="FWCore/Framework"/>
+<use name="DataFormats/VertexReco"/>
+<use name="DataFormats/TrackReco"/>
 <use name="ExternalTools/DynamicTTree"/>
 <export>
   <lib   name="1"/>
