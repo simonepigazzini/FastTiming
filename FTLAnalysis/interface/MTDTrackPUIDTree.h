@@ -16,9 +16,11 @@ using namespace std;
     DATA(float, x)                              \
     DATA(float, y)                              \
     DATA(float, z)                              \
+    DATA(float, dz)                             \
+    DATA(float, dxy)                            \
     DATA(float, dzErr)                          \
     DATA(float, dxyErr)                         \
-        DATA(float, chi2)                       \
+    DATA(float, chi2)                           \
     DATA(float, ndof)                           \
     DATA(float, t0)                             \
     DATA(float, sigmat0)                        \
@@ -27,24 +29,18 @@ using namespace std;
     DATA(float, probPi)                         \
     DATA(float, probP)                          \
     DATA(float, probK)                          \
-    DATA(float, energy)                         \
     DATA(float, btlMatchChi2)                   \
     DATA(float, btlMatchTimeChi2)               \
     DATA(float, etlMatchChi2)                   \
     DATA(float, etlMatchTimeChi2)               \
     DATA(float, normalizedChi2)                 \
-    DATA(int, numberOfValidHits)                \
-    DATA(int, numberOfLostHits)                 \
-    DATA(int, numberOfValidPixelBarrelHits)     \
-    DATA(int, numberOfValidPixelEndcapHits)     \
-    DATA(int, numberOfValidStripTIBHits)        \
-    DATA(int, numberOfValidStripTIDHits)        \
-    DATA(int, numberOfValidStripTOBHits)        \
-    DATA(int, numberOfValidStripTECHits)        \
-    DATA(int, numberOfValidHitsBTL)             \
-    DATA(int, numberOfValidHitsETL)             \
-    DATA(int, isHighPurity)                     \
-    DATA(bool, hasMTD)                          \
+    DATA(float, numberOfValidHits)              \
+    DATA(float, numberOfLostHits)               \
+    DATA(float, numberOfValidPixelBarrelHits)   \
+    DATA(float, numberOfValidPixelEndcapHits)   \
+    DATA(float, numberOfValidHitsBTL)           \
+    DATA(float, numberOfValidHitsETL)           \
+    DATA(float, hasMTD)                         \
     DATA(float, genPdgId)                       \
     DATA(float, genPt)                          \
     DATA(float, genEta)                         \
@@ -59,19 +55,14 @@ using namespace std;
     DATA(float, genVtx_y)                       \
     DATA(float, genVtx_z)                       \
     DATA(float, genVtx_t)                       \
-    DATA(float, pv3d_valid)                     \
-    DATA(float, pv3d_ntrks)                     \
-    DATA(float, pv3d_chi2)                      \
-    DATA(float, pv3d_x)                         \
-    DATA(float, pv3d_y)                         \
-    DATA(float, pv3d_z)                         \
-    DATA(float, pv4d_valid)                     \
-    DATA(float, pv4d_ntrks)                     \
-    DATA(float, pv4d_chi2)                      \
-    DATA(float, pv4d_x)                         \
-    DATA(float, pv4d_y)                         \
-    DATA(float, pv4d_z)                         \
-    DATA(float, pv4d_t)                         
+    DATA(float, pv_valid)                       \
+    DATA(float, pv_ntrks)                       \
+    DATA(float, pv_chi2)                        \
+    DATA(float, pv_x)                           \
+    DATA(float, pv_y)                           \
+    DATA(float, pv_z)                           \
+    DATA(float, pv_t)                           \
+    DATA(float, puid)
 
 #include "ExternalTools/DynamicTTree/interface/DynamicTTreeInterface.h"
 

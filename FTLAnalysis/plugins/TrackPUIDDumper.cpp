@@ -35,6 +35,7 @@
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticleFwd.h"
 #include "SimDataFormats/Associations/interface/TrackToTrackingParticleAssociator.h"
 
+#include "PrecisionTiming/FTLAnalysis/interface/TrackPUIDMVA.h"
 #include "PrecisionTiming/FTLAnalysis/interface/MTDTrackPUIDTree.h"
 
 using namespace std;                             
@@ -109,7 +110,10 @@ private:
     //---options
 
     //---outputs
-    MTDTrackPUIDTree trksTree_;
+    TrackPUIDMVA mva3D_;
+    TrackPUIDMVA mva4D_;    
+    MTDTrackPUIDTree trks3DTree_;
+    MTDTrackPUIDTree trks4DTree_;    
     edm::Service<TFileService> fs_;  
   
 };
@@ -135,9 +139,12 @@ TrackPUIDDumper::TrackPUIDDumper(const edm::ParameterSet& pSet):
     genXYZToken_(consumes<genXYZ>(pSet.getUntrackedParameter<edm::InputTag>("genXYZTag"))),
     genT0Token_(consumes<float>(pSet.getUntrackedParameter<edm::InputTag>("genT0Tag"))),
     vtx3DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx3DTag"))),
-    vtx4DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx4DTag")))
+    vtx4DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx4DTag"))),
+    mva3D_(pSet.getParameter<edm::FileInPath>("trackPUID_3DBDT_weights_file").fullPath(), false),
+    mva4D_(pSet.getParameter<edm::FileInPath>("trackPUID_4DBDT_weights_file").fullPath(), true)
 {
-    trksTree_ = MTDTrackPUIDTree(pSet.getUntrackedParameter<string>("trksTreeName").c_str(), "4D TOFPID studies");
+    trks3DTree_ = MTDTrackPUIDTree((pSet.getUntrackedParameter<string>("trksTreeName")+"3D").c_str(), "Track PU-ID training tree");
+    trks4DTree_ = MTDTrackPUIDTree((pSet.getUntrackedParameter<string>("trksTreeName")+"4D").c_str(), "Track PU-ID training tree");    
 }
 
 void TrackPUIDDumper::analyze(edm::Event const& event, edm::EventSetup const& setup)
@@ -207,14 +214,16 @@ void TrackPUIDDumper::analyze(edm::Event const& event, edm::EventSetup const& se
 
     for(unsigned int itrack=0; itrack<extTracks.size(); ++itrack)
     {
-        trksTree_.Reset();
-        
-        auto& track = extTracks[itrack];
+        trks3DTree_.Reset();
+        trks4DTree_.Reset();
+
+        auto& track = tracks[itrack];
+        auto& ext_track = extTracks[itrack];
         reco::TrackBaseRef track_ref(tracksHandle_, itrack);
         reco::TrackBaseRef ext_track_ref(extTracksHandle_, itrack);
-
+        
         //---Remove tracks with very low pt
-        if(track.pt() < 0.5)
+        if(track.pt() < 0.4)
             continue;
         
         //---get TOFPIDProducer recomputed t0,sigmat0 and particle probs
@@ -222,7 +231,7 @@ void TrackPUIDDumper::analyze(edm::Event const& event, edm::EventSetup const& se
         if(t0PID.contains(track_ref.id()))
         {
             t_t0 = t0PID[track_ref];
-            t_sigmat0 = sigmat0PID[track_ref];
+            t_sigmat0 = sigmat0PID[track_ref]>0 ? 0.035 : -1; // FIXME once the correct value will be available in the upstream samples
             t_probPi = probPiPID[track_ref];
             t_probP = probPPID[track_ref];
             t_probK = probKPID[track_ref];
@@ -237,12 +246,17 @@ void TrackPUIDDumper::analyze(edm::Event const& event, edm::EventSetup const& se
         if(trkRecoToSimMap.find(track_ref) != trkRecoToSimMap.end())
         {
             auto& simTrack = trkRecoToSimMap[track_ref].begin()->first;
-            trksTree_.simIsFromPV = true;
-            trksTree_.simPt = simTrack->pt();
-            trksTree_.simEta = simTrack->eta();
-            trksTree_.simPhi = simTrack->phi();
-            trksTree_.simZ = simTrack->vz();
-        
+            trks3DTree_.simIsFromPV = true;
+            trks3DTree_.simPt = simTrack->pt();
+            trks3DTree_.simEta = simTrack->eta();
+            trks3DTree_.simPhi = simTrack->phi();
+            trks3DTree_.simZ = simTrack->vz(); 
+            trks4DTree_.simIsFromPV = true;
+            trks4DTree_.simPt = simTrack->pt();
+            trks4DTree_.simEta = simTrack->eta();
+            trks4DTree_.simPhi = simTrack->phi();
+            trks4DTree_.simZ = simTrack->vz();
+
             for(unsigned int iPart=0; iPart<genParticles.size(); ++iPart)
             {
                 auto& genPart = genParticles[iPart];
@@ -250,7 +264,7 @@ void TrackPUIDDumper::analyze(edm::Event const& event, edm::EventSetup const& se
                 if( genPart.status() != 1 ) continue;
                 if( genPart.charge() == 0 ) continue;
 
-                float DR   = deltaR(track.eta(), track.phi(), genPart.eta(), genPart.phi());
+                float DR   = deltaR(ext_track.eta(), ext_track.phi(), genPart.eta(), genPart.phi());
                 
                 if( DR < DRMin )
                 {
@@ -265,81 +279,129 @@ void TrackPUIDDumper::analyze(edm::Event const& event, edm::EventSetup const& se
 	}
         else
         {
-            trksTree_.simIsFromPV = false;
-            trksTree_.simPt = -1;
-            trksTree_.simEta = 0;
-            trksTree_.simPhi = 0;
-            trksTree_.simZ = 0;
+            trks3DTree_.simIsFromPV = false;
+            trks3DTree_.simPt = -1;
+            trks3DTree_.simEta = 0;
+            trks3DTree_.simPhi = 0;
+            trks3DTree_.simZ = 0;
+            trks4DTree_.simIsFromPV = false;
+            trks4DTree_.simPt = -1;
+            trks4DTree_.simEta = 0;
+            trks4DTree_.simPhi = 0;
+            trks4DTree_.simZ = 0;
         }
         
-        //---get MTD hits from pattern
-        const auto& pattern = track.hitPattern();        
+        //---fill 3D tree
+        const auto& pattern3D = track.hitPattern();        
 
-        trksTree_.idx = itrack;
-        trksTree_.pt = track.pt();
-        trksTree_.eta = track.eta();
-        trksTree_.phi = track.phi();
-        trksTree_.x = track.vx();
-        trksTree_.y = track.vy();
-        trksTree_.z = track.vz();
-        trksTree_.dzErr = track.dzError();
-        trksTree_.dxyErr = track.dxyError();
-        trksTree_.chi2 = track.chi2();
-        trksTree_.ndof = track.ndof();
-        trksTree_.t0 = t_t0;
-        trksTree_.sigmat0 = t_sigmat0;
-        trksTree_.mtdt = extTracksMTDtime[ext_track_ref];
-        trksTree_.path_len = extPathLenght[ext_track_ref];
-        trksTree_.probPi = t_probPi;
-        trksTree_.probP = t_probP;
-        trksTree_.probK = t_probK;        
-        trksTree_.energy = sqrt(track.momentum().mag2());
-        trksTree_.btlMatchChi2 = btlMatchChi2.contains(ext_track_ref.id()) ? btlMatchChi2[ext_track_ref] : -1;
-        trksTree_.btlMatchTimeChi2 = btlMatchTimeChi2.contains(ext_track_ref.id()) ? btlMatchTimeChi2[ext_track_ref] : -1;
-        trksTree_.etlMatchChi2 = etlMatchChi2.contains(ext_track_ref.id()) ? etlMatchChi2[ext_track_ref] : -1;
-        trksTree_.etlMatchTimeChi2 = etlMatchTimeChi2.contains(ext_track_ref.id()) ? etlMatchTimeChi2[ext_track_ref] : -1;        
-        trksTree_.normalizedChi2 = track.normalizedChi2();
-        trksTree_.numberOfValidHits = track.numberOfValidHits();
-        trksTree_.numberOfLostHits = track.numberOfLostHits();
-        trksTree_.numberOfValidPixelBarrelHits = pattern.numberOfValidPixelBarrelHits();
-        trksTree_.numberOfValidPixelEndcapHits = pattern.numberOfValidPixelEndcapHits();
-        trksTree_.numberOfValidStripTIBHits = pattern.numberOfValidStripTIBHits();
-        trksTree_.numberOfValidStripTIDHits = pattern.numberOfValidStripTIDHits();
-        trksTree_.numberOfValidStripTOBHits = pattern.numberOfValidStripTOBHits();
-        trksTree_.numberOfValidStripTECHits = pattern.numberOfValidStripTECHits();
-        trksTree_.numberOfValidHitsBTL = pattern.numberOfValidTimingBTLHits();
-        trksTree_.numberOfValidHitsETL = pattern.numberOfValidTimingETLHits();
-        trksTree_.isHighPurity = track.quality(reco::TrackBase::TrackQuality::highPurity);
-        trksTree_.hasMTD = track.isTimeOk();
-        trksTree_.genPdgId = genPdgId;
-        trksTree_.genPt = genPt;
-        trksTree_.genEta = genEta;
-        trksTree_.genPhi = genPhi;
-        trksTree_.genDR = DRMin;
-        trksTree_.genVtx_x = genPV.x();
-        trksTree_.genVtx_y = genPV.y();        
-        trksTree_.genVtx_z = genPV.z();        
-        trksTree_.genVtx_t = genPV.t();
-        trksTree_.pv3d_valid = vtxs3D[0].isValid() && !vtxs4D[0].isFake();
-        trksTree_.pv3d_ntrks = vtxs3D[0].nTracks();
-        trksTree_.pv3d_chi2 = vtxs3D[0].chi2()/vtxs3D[0].ndof();
-        trksTree_.pv3d_x = vtxs3D[0].x();
-        trksTree_.pv3d_y = vtxs3D[0].y();
-        trksTree_.pv3d_z = vtxs3D[0].z();
-        trksTree_.pv4d_valid = vtxs4D[0].isValid() && !vtxs4D[0].isFake();
-        trksTree_.pv4d_ntrks = vtxs4D[0].nTracks();
-        trksTree_.pv4d_chi2 = vtxs4D[0].chi2()/vtxs4D[0].ndof();
-        trksTree_.pv4d_x = vtxs4D[0].x();
-        trksTree_.pv4d_y = vtxs4D[0].y();
-        trksTree_.pv4d_z = vtxs4D[0].z();
-        trksTree_.pv4d_t = vtxs4D[0].t();
-        // trksTree_.puid_3D = mva3D_(track_ref, vtxs3D[0]);
-        // trksTree_.puid_4D = mva4D_(track_ref, ext_track_ref, vtxs4D[0],
-        //                            t0PID, sigmat0PID, btlMatchChi2, btlMatchTimeChi2, etlMatchChi2, etlMatchTimeChi2,
-        //                            extTracksMTDtime, extPathLenght);
+        trks3DTree_.idx = itrack;
+        trks3DTree_.pt = track.pt();
+        trks3DTree_.eta = track.eta();
+        trks3DTree_.phi = track.phi();
+        trks3DTree_.x = track.vx();
+        trks3DTree_.y = track.vy();
+        trks3DTree_.z = track.vz();
+        trks3DTree_.dz = track.dz(vtxs3D[0].position());
+        trks3DTree_.dxy = track.dxy(vtxs3D[0].position());
+        trks3DTree_.dzErr = track.dzError();
+        trks3DTree_.dxyErr = track.dxyError();
+        trks3DTree_.chi2 = track.chi2();
+        trks3DTree_.ndof = track.ndof();
+        trks3DTree_.t0 = -1;
+        trks3DTree_.sigmat0 = -1;
+        trks3DTree_.mtdt = -1;
+        trks3DTree_.path_len = -1;
+        trks3DTree_.probPi = -1;
+        trks3DTree_.probP = -1;
+        trks3DTree_.probK = -1;
+        trks3DTree_.btlMatchChi2 = -1;
+        trks3DTree_.btlMatchTimeChi2 = -1;
+        trks3DTree_.etlMatchChi2 = -1;
+        trks3DTree_.etlMatchTimeChi2 = -1;
+        trks3DTree_.normalizedChi2 = track.normalizedChi2();
+        trks3DTree_.numberOfValidHits = track.numberOfValidHits();
+        trks3DTree_.numberOfLostHits = track.numberOfLostHits();
+        trks3DTree_.numberOfValidPixelBarrelHits = pattern3D.numberOfValidPixelBarrelHits();
+        trks3DTree_.numberOfValidPixelEndcapHits = pattern3D.numberOfValidPixelEndcapHits();
+        trks3DTree_.numberOfValidHitsBTL = pattern3D.numberOfValidTimingBTLHits();
+        trks3DTree_.numberOfValidHitsETL = pattern3D.numberOfValidTimingETLHits();
+        trks3DTree_.hasMTD = track.isTimeOk();
+        trks3DTree_.genPdgId = genPdgId;
+        trks3DTree_.genPt = genPt;
+        trks3DTree_.genEta = genEta;
+        trks3DTree_.genPhi = genPhi;
+        trks3DTree_.genDR = DRMin;
+        trks3DTree_.genVtx_x = genPV.x();
+        trks3DTree_.genVtx_y = genPV.y();        
+        trks3DTree_.genVtx_z = genPV.z();        
+        trks3DTree_.genVtx_t = genPV.t();
+        trks3DTree_.pv_valid = vtxs3D[0].isValid() && !vtxs3D[0].isFake();
+        trks3DTree_.pv_ntrks = vtxs3D[0].nTracks();
+        trks3DTree_.pv_chi2 = vtxs3D[0].chi2()/vtxs3D[0].ndof();
+        trks3DTree_.pv_x = vtxs3D[0].x();
+        trks3DTree_.pv_y = vtxs3D[0].y();
+        trks3DTree_.pv_z = vtxs3D[0].z();
+        trks3DTree_.pv_t = -1.;
+        trks3DTree_.puid = mva3D_(track_ref, vtxs3D[0]);
+       
+        //---fill 4D tree
+        const auto& pattern4D = ext_track.hitPattern();        
+
+        trks4DTree_.idx = itrack;
+        trks4DTree_.pt = track.pt();
+        trks4DTree_.eta = track.eta();
+        trks4DTree_.phi = track.phi();
+        trks4DTree_.x = track.vx();
+        trks4DTree_.y = track.vy();
+        trks4DTree_.z = track.vz();
+        trks4DTree_.dz = track.dz(vtxs4D[0].position());
+        trks4DTree_.dxy = track.dxy(vtxs4D[0].position());
+        trks4DTree_.dzErr = track.dzError();
+        trks4DTree_.dxyErr = track.dxyError();
+        trks4DTree_.chi2 = track.chi2();
+        trks4DTree_.ndof = track.ndof();
+        trks4DTree_.t0 = t_t0;
+        trks4DTree_.sigmat0 = t_sigmat0;
+        trks4DTree_.mtdt = extTracksMTDtime.contains(ext_track_ref.id()) ? extTracksMTDtime[ext_track_ref] : -1;
+        trks4DTree_.path_len = extPathLenght.contains(ext_track_ref.id()) ? extPathLenght[ext_track_ref] : -1;
+        trks4DTree_.probPi = t_probPi;
+        trks4DTree_.probP = t_probP;
+        trks4DTree_.probK = t_probK;        
+        trks4DTree_.btlMatchChi2 = btlMatchChi2.contains(ext_track_ref.id()) ? btlMatchChi2[ext_track_ref] : -1;
+        trks4DTree_.btlMatchTimeChi2 = btlMatchTimeChi2.contains(ext_track_ref.id()) ? btlMatchTimeChi2[ext_track_ref] : -1;
+        trks4DTree_.etlMatchChi2 = etlMatchChi2.contains(ext_track_ref.id()) ? etlMatchChi2[ext_track_ref] : -1;
+        trks4DTree_.etlMatchTimeChi2 = etlMatchTimeChi2.contains(ext_track_ref.id()) ? etlMatchTimeChi2[ext_track_ref] : -1;        
+        trks4DTree_.normalizedChi2 = ext_track.normalizedChi2();
+        trks4DTree_.numberOfValidHits = track.numberOfValidHits();
+        trks4DTree_.numberOfLostHits = track.numberOfLostHits();
+        trks4DTree_.numberOfValidPixelBarrelHits = pattern4D.numberOfValidPixelBarrelHits();
+        trks4DTree_.numberOfValidPixelEndcapHits = pattern4D.numberOfValidPixelEndcapHits();
+        trks4DTree_.numberOfValidHitsBTL = pattern4D.numberOfValidTimingBTLHits();
+        trks4DTree_.numberOfValidHitsETL = pattern4D.numberOfValidTimingETLHits();
+        trks4DTree_.hasMTD = ext_track.isTimeOk();
+        trks4DTree_.genPdgId = genPdgId;
+        trks4DTree_.genPt = genPt;
+        trks4DTree_.genEta = genEta;
+        trks4DTree_.genPhi = genPhi;
+        trks4DTree_.genDR = DRMin;
+        trks4DTree_.genVtx_x = genPV.x();
+        trks4DTree_.genVtx_y = genPV.y();        
+        trks4DTree_.genVtx_z = genPV.z();        
+        trks4DTree_.genVtx_t = genPV.t();
+        trks4DTree_.pv_valid = vtxs4D[0].isValid() && !vtxs4D[0].isFake();
+        trks4DTree_.pv_ntrks = vtxs4D[0].nTracks();
+        trks4DTree_.pv_chi2 = vtxs4D[0].chi2()/vtxs4D[0].ndof();
+        trks4DTree_.pv_x = vtxs4D[0].x();
+        trks4DTree_.pv_y = vtxs4D[0].y();
+        trks4DTree_.pv_z = vtxs4D[0].z();
+        trks4DTree_.pv_t = vtxs4D[0].t();
+        trks4DTree_.puid = mva4D_(track_ref, ext_track_ref, vtxs4D[0],
+                                  t0PID, sigmat0PID, btlMatchChi2, btlMatchTimeChi2, etlMatchChi2, etlMatchTimeChi2,
+                                  extTracksMTDtime, extPathLenght);
         
         //---Fill tree
-        trksTree_.GetTTreePtr()->Fill();
+        trks3DTree_.GetTTreePtr()->Fill();
+        trks4DTree_.GetTTreePtr()->Fill();
     }
     
 }
