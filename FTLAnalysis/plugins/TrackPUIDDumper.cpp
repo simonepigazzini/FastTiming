@@ -108,7 +108,8 @@ private:
     edm::Handle<vector<reco::Vertex> >        vtx4DHandle_;    
     
     //---options
-
+    bool useSimTracks_;
+    
     //---outputs
     TrackPUIDMVA mva3D_;
     TrackPUIDMVA mva4D_;    
@@ -140,8 +141,9 @@ TrackPUIDDumper::TrackPUIDDumper(const edm::ParameterSet& pSet):
     genT0Token_(consumes<float>(pSet.getUntrackedParameter<edm::InputTag>("genT0Tag"))),
     vtx3DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx3DTag"))),
     vtx4DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx4DTag"))),
-    mva3D_(pSet.getParameter<edm::FileInPath>("trackPUID_3DBDT_weights_file").fullPath(), false),
-    mva4D_(pSet.getParameter<edm::FileInPath>("trackPUID_4DBDT_weights_file").fullPath(), true)
+    useSimTracks_(pSet.getUntrackedParameter<bool>("useSimTracks")),
+    mva3D_(pSet.getUntrackedParameter<edm::FileInPath>("trackPUID_3DBDT_weights_file").fullPath(), false),
+    mva4D_(pSet.getUntrackedParameter<edm::FileInPath>("trackPUID_4DBDT_weights_file").fullPath(), true)
 {
     trks3DTree_ = MTDTrackPUIDTree((pSet.getUntrackedParameter<string>("trksTreeName")+"3D").c_str(), "Track PU-ID training tree");
     trks4DTree_ = MTDTrackPUIDTree((pSet.getUntrackedParameter<string>("trksTreeName")+"4D").c_str(), "Track PU-ID training tree");    
@@ -158,11 +160,16 @@ void TrackPUIDDumper::analyze(edm::Event const& event, edm::EventSetup const& se
     auto simParticles = *simParticlesHandle_.product();
     
     //--- load sim particles (aka trackingParticles)
-    event.getByToken(trkRecoToSimMapToken_, trkRecoToSimMapHandle_);
-    auto trkRecoToSimMap = *trkRecoToSimMapHandle_.product();
-    event.getByToken(trkSimToRecoMapToken_, trkSimToRecoMapHandle_);
-    auto trkSimToRecoMap = *trkSimToRecoMapHandle_.product();  
-  
+    reco::RecoToSimCollection trkRecoToSimMap;
+    reco::SimToRecoCollection trkSimToRecoMap;
+    if(useSimTracks_)
+    {
+        event.getByToken(trkRecoToSimMapToken_, trkRecoToSimMapHandle_);
+        trkRecoToSimMap = *trkRecoToSimMapHandle_.product();
+        event.getByToken(trkSimToRecoMapToken_, trkSimToRecoMapHandle_);
+        trkSimToRecoMap = *trkSimToRecoMapHandle_.product();  
+    }
+    
     //---load general tracks
     event.getByToken(tracksToken_,tracksHandle_);
     auto tracks = *tracksHandle_.product();
@@ -237,12 +244,6 @@ void TrackPUIDDumper::analyze(edm::Event const& event, edm::EventSetup const& se
             t_probK = probKPID[track_ref];
         }
 
-        // match with gen particles
-        float DRMin = 1e9;
-        int genPdgId = 0;
-        float genEta = -999.;
-        float genPhi = -999.;
-        float genPt = -999.;        
         if(trkRecoToSimMap.find(track_ref) != trkRecoToSimMap.end())
         {
             auto& simTrack = trkRecoToSimMap[track_ref].begin()->first;
@@ -256,40 +257,70 @@ void TrackPUIDDumper::analyze(edm::Event const& event, edm::EventSetup const& se
             trks4DTree_.simEta = simTrack->eta();
             trks4DTree_.simPhi = simTrack->phi();
             trks4DTree_.simZ = simTrack->vz();
-
-            for(unsigned int iPart=0; iPart<genParticles.size(); ++iPart)
-            {
-                auto& genPart = genParticles[iPart];
-            
-                if( genPart.status() != 1 ) continue;
-                if( genPart.charge() == 0 ) continue;
-
-                float DR   = deltaR(ext_track.eta(), ext_track.phi(), genPart.eta(), genPart.phi());
-                
-                if( DR < DRMin )
-                {
-                    DRMin = DR;
-                    
-                    genPdgId = genPart.pdgId();
-                    genEta   = genPart.eta();
-                    genPhi   = genPart.phi();
-                    genPt    = genPart.pt();
-                }
-            }
 	}
         else
         {
-            trks3DTree_.simIsFromPV = false;
-            trks3DTree_.simPt = -1;
-            trks3DTree_.simEta = 0;
-            trks3DTree_.simPhi = 0;
-            trks3DTree_.simZ = 0;
-            trks4DTree_.simIsFromPV = false;
-            trks4DTree_.simPt = -1;
-            trks4DTree_.simEta = 0;
-            trks4DTree_.simPhi = 0;
-            trks4DTree_.simZ = 0;
+            bool sim_found=false;
+            float minDR = 1e6;
+            for(auto& simtrk : simParticles)
+            {
+                auto dr = deltaR(track.eta(), track.phi(), simtrk.eta(), simtrk.phi());
+                if(dr<0.03 && fabs(track.pt()/simtrk.pt()-1)<0.05 && dr < minDR)
+                {
+                    trks3DTree_.simIsFromPV = true;
+                    trks3DTree_.simPt = simtrk.pt();
+                    trks3DTree_.simEta = simtrk.eta();
+                    trks3DTree_.simPhi = simtrk.phi();
+                    trks3DTree_.simZ = simtrk.vz(); 
+                    trks4DTree_.simIsFromPV = true;
+                    trks4DTree_.simPt = simtrk.pt();
+                    trks4DTree_.simEta = simtrk.eta();
+                    trks4DTree_.simPhi = simtrk.phi();
+                    trks4DTree_.simZ = simtrk.vz();
+                    sim_found = true;
+                }
+            }
+            if(!sim_found)
+            {
+                trks3DTree_.simIsFromPV = false;
+                trks3DTree_.simPt = -1;
+                trks3DTree_.simEta = 0;
+                trks3DTree_.simPhi = 0;
+                trks3DTree_.simZ = 0;
+                trks4DTree_.simIsFromPV = false;
+                trks4DTree_.simPt = -1;
+                trks4DTree_.simEta = 0;
+                trks4DTree_.simPhi = 0;
+                trks4DTree_.simZ = 0;
+            }
         }
+
+        // match with gen particles
+        float DRMin = 1e9;
+        int genPdgId = 0;
+        float genEta = -999.;
+        float genPhi = -999.;
+        float genPt = -999.;                
+        for(unsigned int iPart=0; iPart<genParticles.size(); ++iPart)
+        {
+            auto& genPart = genParticles[iPart];
+            
+            if( genPart.status() != 1 ) continue;
+            if( genPart.charge() == 0 ) continue;
+
+            float DR   = deltaR(track.eta(), track.phi(), genPart.eta(), genPart.phi());
+                
+            if( DR < DRMin )
+            {
+                DRMin = DR;
+                    
+                genPdgId = genPart.pdgId();
+                genEta   = genPart.eta();
+                genPhi   = genPart.phi();
+                genPt    = genPart.pt();
+            }
+        }
+
         
         //---fill 3D tree
         const auto& pattern3D = track.hitPattern();        

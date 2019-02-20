@@ -170,8 +170,8 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
     auto genParticles = *genParticlesHandle_.product();
     
     //--- load sim particles
-    // event.getByToken(simParticlesToken_, simParticlesHandle_);
-    // auto simParticles = *simParticlesHandle_.product();
+    event.getByToken(simParticlesToken_, simParticlesHandle_);
+    auto simParticles = *simParticlesHandle_.product();
     
     //--- load sim particles (aka trackingParticles)
     event.getByToken(trkRecoToSimMapToken_, trkRecoToSimMapHandle_);
@@ -260,7 +260,7 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
     for(unsigned int itrack=0; itrack<extTracks.size(); ++itrack)
     {
         
-        auto& track = extTracks[itrack];
+        auto& track = tracks[itrack];
         reco::TrackBaseRef track_ref(tracksHandle_, itrack);
         reco::TrackBaseRef ext_track_ref(extTracksHandle_, itrack);
 
@@ -272,54 +272,78 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
         if(t0PID.contains(track_ref.id()))
         {
             t_t0 = t0PID[track_ref];
-            t_sigmat0 = sigmat0PID[track_ref];
+            t_sigmat0 = sigmat0PID[track_ref]>0 ? 0.035 : -1; // FIXME once the correct value will be available in the upstream samples
             t_probPi = probPiPID[track_ref];
             t_probP = probPPID[track_ref];
             t_probK = probKPID[track_ref];
         }
-        
+
+        //---Match with tracking particles
+        if(trkRecoToSimMap.find(track_ref) != trkRecoToSimMap.end())
+        {
+            auto& simTrack = trkRecoToSimMap[track_ref].begin()->first;
+            trksTree_.trk_simIsFromPV->push_back(true);
+            trksTree_.trk_simPt->push_back(simTrack->pt());
+            trksTree_.trk_simEta->push_back(simTrack->eta());
+            trksTree_.trk_simPhi->push_back(simTrack->phi());
+            trksTree_.trk_simZ->push_back(simTrack->vz());
+	}
+        else
+        {
+            bool sim_found=false;
+            float minDR = 1e6;
+            auto matched_sim_trk = simParticles[0];
+            for(auto& simtrk : simParticles)
+            {
+                auto dr = deltaR(track.eta(), track.phi(), simtrk.eta(), simtrk.phi());
+                if(dr<0.03 && fabs(track.pt()/simtrk.pt()-1)<0.05 && dr < minDR)
+                {
+                    matched_sim_trk = simtrk;
+                    sim_found = true;
+                }                
+            }
+            if(!sim_found)
+            {
+                trksTree_.trk_simIsFromPV->push_back(false);
+                trksTree_.trk_simPt->push_back(-1);
+                trksTree_.trk_simEta->push_back(0);
+                trksTree_.trk_simPhi->push_back(0);
+                trksTree_.trk_simZ->push_back(0);
+            }
+            else
+            {
+                trksTree_.trk_simIsFromPV->push_back(true);
+                trksTree_.trk_simPt->push_back(matched_sim_trk.pt());
+                trksTree_.trk_simEta->push_back(matched_sim_trk.eta());
+                trksTree_.trk_simPhi->push_back(matched_sim_trk.phi());
+                trksTree_.trk_simZ->push_back(matched_sim_trk.vz());
+            }                
+        }
+
         // match with gen particles
         float DRMin = 1e9;
         int genPdgId = 0;
         float genEta = -999.;
         float genPhi = -999.;
         float genPt = -999.;        
-        if(trkRecoToSimMap.find(track_ref) != trkRecoToSimMap.end())
+        for(unsigned int iPart=0; iPart<genParticles.size(); ++iPart)
         {
-            auto& simTrack = trkRecoToSimMap[track_ref].begin()->first;
-            trksTree_.trk_simIsFromPV->push_back(1);
-            trksTree_.trk_simPt->push_back(simTrack->pt());
-            trksTree_.trk_simEta->push_back(simTrack->eta());
-            trksTree_.trk_simPhi->push_back(simTrack->phi());
-            trksTree_.trk_simZ->push_back(simTrack->vz());
-        
-            for(unsigned int iPart=0; iPart<genParticles.size(); ++iPart)
-            {
-                auto& genPart = genParticles[iPart];
+            auto& genPart = genParticles[iPart];
             
-                if( genPart.status() != 1 ) continue;
-                if( genPart.charge() == 0 ) continue;
+            if( genPart.status() != 1 ) continue;
+            if( genPart.charge() == 0 ) continue;
 
-                float DR   = deltaR(track.eta(), track.phi(), genPart.eta(), genPart.phi());
+            float DR   = deltaR(track.eta(), track.phi(), genPart.eta(), genPart.phi());
                 
-                if( DR < DRMin )
-                {
-                    DRMin = DR;
+            if( DR < DRMin )
+            {
+                DRMin = DR;
                     
-                    genPdgId = genPart.pdgId();
-                    genEta   = genPart.eta();
-                    genPhi   = genPart.phi();
-                    genPt    = genPart.pt();
-                }
+                genPdgId = genPart.pdgId();
+                genEta   = genPart.eta();
+                genPhi   = genPart.phi();
+                genPt    = genPart.pt();
             }
-	}
-        else
-        {
-            trksTree_.trk_simIsFromPV->push_back(0);
-            trksTree_.trk_simPt->push_back(-1);
-            trksTree_.trk_simEta->push_back(0);
-            trksTree_.trk_simPhi->push_back(0);
-            trksTree_.trk_simZ->push_back(0);
         }
 
         //---get MTD hits from pattern
@@ -329,12 +353,13 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
         trksTree_.trk_pt -> push_back(track.pt());
         trksTree_.trk_eta -> push_back(track.eta());
         trksTree_.trk_phi -> push_back(track.phi());
-        trksTree_.trk_x -> push_back(track.vx());
-        trksTree_.trk_y -> push_back(track.vy());
+        trksTree_.trk_dxy_3D -> push_back(track.dxy(vtxs3D[0].position()));
+        trksTree_.trk_dxy_4D -> push_back(track.dxy(vtxs4D[0].position()));        
+        trksTree_.trk_dz_3D -> push_back(track.dz(vtxs3D[0].position()));
+        trksTree_.trk_dz_4D -> push_back(track.dz(vtxs4D[0].position()));        
         trksTree_.trk_z -> push_back(track.vz());
+        trksTree_.trk_sigmaxy -> push_back(track.dxyError());        
         trksTree_.trk_sigmaz -> push_back(track.dzError());
-        trksTree_.trk_t -> push_back(track.t0());
-        trksTree_.trk_sigmat -> push_back(track.t0Error());
         trksTree_.trk_mtdt -> push_back(extTracksMTDtime[ext_track_ref]);
         trksTree_.trk_path_len -> push_back(extPathLenght[ext_track_ref]);
         trksTree_.trk_PID_t -> push_back(t_t0);
@@ -342,15 +367,16 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
         trksTree_.trk_PID_probPi -> push_back(t_probPi);
         trksTree_.trk_PID_probP -> push_back(t_probP);
         trksTree_.trk_PID_probK -> push_back(t_probK);        
-        trksTree_.trk_energy -> push_back(sqrt(track.momentum().mag2()));
-        trksTree_.trk_normalizedChi2 -> push_back(track.normalizedChi2());
+        trksTree_.trk_chi2 -> push_back(track.chi2());
+        trksTree_.trk_ndof -> push_back(track.ndof());        
         trksTree_.trk_numberOfValidHits -> push_back(track.numberOfValidHits());
         trksTree_.trk_numberOfLostHits -> push_back(track.numberOfLostHits());
+        trksTree_.trk_numberOfValidPixelBarrelHits -> push_back(pattern.numberOfValidPixelBarrelHits());
+        trksTree_.trk_numberOfValidPixelEndcapHits -> push_back(pattern.numberOfValidPixelEndcapHits());        
         trksTree_.trk_numberOfValidHitsBTL -> push_back(pattern.numberOfValidTimingBTLHits());
         trksTree_.trk_numberOfValidHitsETL -> push_back(pattern.numberOfValidTimingETLHits());
-        trksTree_.trk_isHighPurity -> push_back(track.quality(reco::TrackBase::TrackQuality::highPurity));
         trksTree_.trk_hasMTD -> push_back(track.isTimeOk());
-        trksTree_.trk_puid_3D -> push_back(mva3D_(ext_track_ref, vtxs3D[0]));
+        trksTree_.trk_puid_3D -> push_back(mva3D_(track_ref, vtxs3D[0]));
         trksTree_.trk_puid_4D -> push_back(mva4D_(track_ref, ext_track_ref, vtxs4D[0],
                                                   t0PID, sigmat0PID, btlMatchChi2, btlMatchTimeChi2, etlMatchChi2, etlMatchTimeChi2,
                                                   extTracksMTDtime, extPathLenght));
@@ -364,6 +390,17 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
         trksTree_.trk_genVtx_z -> push_back(genPV.z());        
         trksTree_.trk_genVtx_t -> push_back(genPV.t());
 
+        trksTree_.pv4d_valid->push_back(vtxs4D[0].isValid() && !vtxs4D[0].isFake());
+        trksTree_.pv4d_z->push_back(vtxs4D[0].z());
+        trksTree_.pv4d_t->push_back(vtxs4D[0].t());
+        trksTree_.pv4d_chi2->push_back(vtxs4D[0].chi2()/vtxs4D[0].ndof());
+        trksTree_.pv4d_ntrks->push_back(vtxs4D[0].nTracks());
+        trksTree_.pv3d_valid->push_back(vtxs3D[0].isValid() && !vtxs3D[0].isFake());
+        trksTree_.pv3d_z->push_back(vtxs3D[0].z());
+        trksTree_.pv3d_t->push_back(vtxs3D[0].t());
+        trksTree_.pv3d_chi2->push_back(vtxs3D[0].chi2()/vtxs3D[0].ndof());
+        trksTree_.pv3d_ntrks->push_back(vtxs3D[0].nTracks());
+        
         //---compute sumpt for vtx0 of 3D and 4D collections (sigmat is wrong in CMSSW < 10_4_0_mtd5 so set i manually to 35ps)        
         if(std::abs(track.vz()-vtxs4D[0].z()) < 0.1 && (std::abs(t_t0-vtxs4D[0].t())<(3*0.035) || t_sigmat0 == -1))
         {
@@ -401,21 +438,10 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
             if(std::abs(genPt/track.pt()-1) < 0.05 && DRMin < 0.03)
                 vtx4D_0_circle3s_genm_sumpt += track.pt();
         }
-
     }
 
-    trksTree_.pv4d_valid = vtxs4D[0].isValid() && !vtxs4D[0].isFake();
-    trksTree_.pv4d_z = vtxs4D[0].z();
-    trksTree_.pv4d_t = vtxs4D[0].t();
-    trksTree_.pv4d_chi2 = vtxs4D[0].chi2()/vtxs4D[0].ndof();
-    trksTree_.pv4d_ntrks = vtxs4D[0].nTracks();
-    trksTree_.pv3d_valid = vtxs3D[0].isValid() && !vtxs3D[0].isFake();
-    trksTree_.pv3d_z = vtxs3D[0].z();
-    trksTree_.pv3d_t = vtxs3D[0].t();
-    trksTree_.pv3d_chi2 = vtxs3D[0].chi2()/vtxs3D[0].ndof();
-    trksTree_.pv3d_ntrks = vtxs3D[0].nTracks();
-    trksTree_.n_gen_charged = n_gen_charged;
-        
+    trksTree_.n_gen_charged = n_gen_charged;        
+    
     vtxsTree_.vtx3D_0_dz_sumpt = vtx3D_0_dz_sumpt;
     vtxsTree_.vtx3D_0_dz_genm_sumpt = vtx3D_0_dz_genm_sumpt;
     vtxsTree_.vtx4D_0_dzdt_sumpt = vtx4D_0_dzdt_sumpt;
