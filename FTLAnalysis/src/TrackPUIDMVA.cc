@@ -76,7 +76,7 @@ float TrackPUIDMVA::operator() (reco::TrackBaseRef& trk, reco::TrackBaseRef& ext
     std::get<1>(vars_[9]) = trk->numberOfValidHits();
     std::get<1>(vars_[10]) = pattern.numberOfValidPixelBarrelHits();
     std::get<1>(vars_[11]) = pattern.numberOfValidPixelEndcapHits();
-    std::get<1>(vars_[12]) = t0s.contains(trk.id()) ? std::abs(t0s[trk]-vtx.t()) : std::abs(-1-vtx.t());
+    std::get<1>(vars_[12]) = t0s.contains(trk.id()) ? t0s[trk]-vtx.t() : -1-vtx.t();
     std::get<1>(vars_[13]) = sigma_t0s.contains(trk.id()) ? sigma_t0s[trk] : -1;    
     std::get<1>(vars_[14]) = btl_chi2s.contains(ext_trk.id()) ? btl_chi2s[ext_trk] : -1;
     std::get<1>(vars_[15]) = btl_time_chi2s.contains(ext_trk.id()) ? btl_time_chi2s[ext_trk] : -1;    
