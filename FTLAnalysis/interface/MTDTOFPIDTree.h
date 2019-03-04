@@ -21,7 +21,7 @@ using namespace std;
     DATA(vector<float>, trk_phi)                                \
     DATA(vector<float>, trk_dxy_3D)                             \
     DATA(vector<float>, trk_dxy_4D)                             \
-    DATA(vector<float>, trk_dz_3D)                              \
+        DATA(vector<float>, trk_dz_3D)                          \
     DATA(vector<float>, trk_dz_4D)                              \
     DATA(vector<float>, trk_z)                                  \
     DATA(vector<float>, trk_sigmaxy)                            \
@@ -35,6 +35,7 @@ using namespace std;
     DATA(vector<float>, trk_PID_probK)                          \
     DATA(vector<float>, trk_chi2)                               \
     DATA(vector<float>, trk_ndof)                               \
+    DATA(vector<int>,   trk_isHighPurity)                       \
     DATA(vector<int>,   trk_numberOfValidHits)                  \
     DATA(vector<int>,   trk_numberOfValidPixelBarrelHits)       \
     DATA(vector<int>,   trk_numberOfValidPixelEndcapHits)       \
@@ -49,6 +50,7 @@ using namespace std;
     DATA(vector<float>, trk_simEta)                             \
     DATA(vector<float>, trk_simPhi)                             \
     DATA(vector<float>, trk_simZ)                               \
+    DATA(vector<float>, trk_simDR)                              \
     DATA(vector<float>, trk_genPdgId)                           \
     DATA(vector<float>, trk_genPt)                              \
     DATA(vector<float>, trk_genEta)                             \

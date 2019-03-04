@@ -73,6 +73,8 @@ private:
     edm::Handle<edm::View<reco::Track> > tracksHandle_;
     edm::EDGetTokenT<edm::View<reco::Track> > extTracksToken_;
     edm::Handle<edm::View<reco::Track> > extTracksHandle_;
+    edm::EDGetTokenT<edm::ValueMap<int> > generalToExtendedTrkMapToken_;
+    edm::Handle<edm::ValueMap<int> > generalToExtendedTrkMapHandle_;
     edm::EDGetTokenT<edm::ValueMap<float> > extTracksMTDtimeToken_;
     edm::Handle<edm::ValueMap<float> > extTracksMTDtimeHandle_;
     edm::EDGetTokenT<edm::ValueMap<float> > pathLengthToken_;
@@ -134,6 +136,7 @@ MTD4DVertexingAnalyzer::MTD4DVertexingAnalyzer(const edm::ParameterSet& pSet):
     trkSimToRecoMapToken_(consumes<reco::SimToRecoCollection>(pSet.getUntrackedParameter<edm::InputTag>("trackAndTrackingParticlesAssociatorMapTag"))),
     tracksToken_(consumes<edm::View<reco::Track> >(pSet.getUntrackedParameter<edm::InputTag>("generalTracksTag"))),
     extTracksToken_(consumes<edm::View<reco::Track> >(pSet.getUntrackedParameter<edm::InputTag>("extendedTracksTag"))),
+    generalToExtendedTrkMapToken_(consumes<edm::ValueMap<int> >(pSet.getUntrackedParameter<edm::InputTag>("generalToExtendedTrkMapTag"))),    
     extTracksMTDtimeToken_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("extTracksMTDtimeTag"))),
     pathLengthToken_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("extTracksPathLengthTag"))),
     btlMatchChi2Token_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("btlMatchChi2Tag"))),
@@ -186,6 +189,8 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
     //---load extended tracks
     event.getByToken(extTracksToken_, extTracksHandle_);
     auto extTracks = *extTracksHandle_.product();
+    event.getByToken(generalToExtendedTrkMapToken_, generalToExtendedTrkMapHandle_);
+    auto generalToExtendedTrkMap = *generalToExtendedTrkMapHandle_.product();
 
     //---extended tracks path length
     event.getByToken(pathLengthToken_, pathLengthHandle_);
@@ -257,12 +262,14 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
     float vtx3D_0_dz_genm_sumpt=0, vtx4D_0_dzdt_genm_sumpt=0;
     float vtx3D_0_3sigma_sumpt=0, vtx4D_0_3sigma_sumpt=0, vtx4D_0_circle3s_sumpt=0;
     float vtx3D_0_3sigma_genm_sumpt=0, vtx4D_0_3sigma_genm_sumpt=0, vtx4D_0_circle3s_genm_sumpt=0;
-    for(unsigned int itrack=0; itrack<extTracks.size(); ++itrack)
+    for(unsigned int itrack=0; itrack<tracks.size(); ++itrack)
     {
         
         auto& track = tracks[itrack];
         reco::TrackBaseRef track_ref(tracksHandle_, itrack);
-        reco::TrackBaseRef ext_track_ref(extTracksHandle_, itrack);
+        reco::TrackBaseRef ext_track_ref;
+        if(generalToExtendedTrkMap[track_ref] != -1)
+            ext_track_ref = reco::TrackBaseRef(extTracksHandle_, generalToExtendedTrkMap[track_ref]);
 
         if(track.pt() < 0.7)
             continue;
@@ -292,12 +299,13 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
         {
             bool sim_found=false;
             float minDR = 1e6;
-            auto matched_sim_trk = simParticles[0];
+            TrackingParticle matched_sim_trk;
             for(auto& simtrk : simParticles)
             {
                 auto dr = deltaR(track.eta(), track.phi(), simtrk.eta(), simtrk.phi());
-                if(dr<0.03 && fabs(track.pt()/simtrk.pt()-1)<0.05 && dr < minDR)
+                if(dr < minDR)
                 {
+                    minDR = dr;
                     matched_sim_trk = simtrk;
                     sim_found = true;
                 }                
@@ -312,11 +320,12 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
             }
             else
             {
-                trksTree_.trk_simIsFromPV->push_back(true);
+                trksTree_.trk_simIsFromPV->push_back(false);
                 trksTree_.trk_simPt->push_back(matched_sim_trk.pt());
                 trksTree_.trk_simEta->push_back(matched_sim_trk.eta());
                 trksTree_.trk_simPhi->push_back(matched_sim_trk.phi());
                 trksTree_.trk_simZ->push_back(matched_sim_trk.vz());
+                trksTree_.trk_simDR->push_back(minDR);
             }                
         }
 
@@ -360,15 +369,16 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
         trksTree_.trk_z -> push_back(track.vz());
         trksTree_.trk_sigmaxy -> push_back(track.dxyError());        
         trksTree_.trk_sigmaz -> push_back(track.dzError());
-        trksTree_.trk_mtdt -> push_back(extTracksMTDtime[ext_track_ref]);
-        trksTree_.trk_path_len -> push_back(extPathLenght[ext_track_ref]);
+        trksTree_.trk_mtdt -> push_back(!ext_track_ref.isNull() ? extTracksMTDtime[ext_track_ref] : -1);
+        trksTree_.trk_path_len -> push_back(!ext_track_ref.isNull() ? extPathLenght[ext_track_ref] : -1);
         trksTree_.trk_PID_t -> push_back(t_t0);
         trksTree_.trk_PID_sigmat -> push_back(t_sigmat0);
         trksTree_.trk_PID_probPi -> push_back(t_probPi);
         trksTree_.trk_PID_probP -> push_back(t_probP);
         trksTree_.trk_PID_probK -> push_back(t_probK);        
         trksTree_.trk_chi2 -> push_back(track.chi2());
-        trksTree_.trk_ndof -> push_back(track.ndof());        
+        trksTree_.trk_ndof -> push_back(track.ndof());
+        trksTree_.trk_isHighPurity -> push_back(track.quality(reco::TrackBase::TrackQuality::highPurity));
         trksTree_.trk_numberOfValidHits -> push_back(track.numberOfValidHits());
         trksTree_.trk_numberOfLostHits -> push_back(track.numberOfLostHits());
         trksTree_.trk_numberOfValidPixelBarrelHits -> push_back(pattern.numberOfValidPixelBarrelHits());

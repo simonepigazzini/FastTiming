@@ -72,6 +72,8 @@ private:
     edm::Handle<edm::View<reco::Track> > tracksHandle_;
     edm::EDGetTokenT<edm::View<reco::Track> > extTracksToken_;
     edm::Handle<edm::View<reco::Track> > extTracksHandle_;
+    edm::EDGetTokenT<edm::ValueMap<int> > generalToExtendedTrkMapToken_;
+    edm::Handle<edm::ValueMap<int> > generalToExtendedTrkMapHandle_;
     edm::EDGetTokenT<edm::ValueMap<float> > btlMatchChi2Token_;
     edm::Handle<edm::ValueMap<float> > btlMatchChi2Handle_;
     edm::EDGetTokenT<edm::ValueMap<float> > btlMatchTimeChi2Token_;
@@ -126,6 +128,7 @@ TrackPUIDDumper::TrackPUIDDumper(const edm::ParameterSet& pSet):
     trkSimToRecoMapToken_(consumes<reco::SimToRecoCollection>(pSet.getUntrackedParameter<edm::InputTag>("trackAndTrackingParticlesAssociatorMapTag"))),
     tracksToken_(consumes<edm::View<reco::Track> >(pSet.getUntrackedParameter<edm::InputTag>("generalTracksTag"))),
     extTracksToken_(consumes<edm::View<reco::Track> >(pSet.getUntrackedParameter<edm::InputTag>("extendedTracksTag"))),
+    generalToExtendedTrkMapToken_(consumes<edm::ValueMap<int> >(pSet.getUntrackedParameter<edm::InputTag>("generalToExtendedTrkMapTag"))),    
     btlMatchChi2Token_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("btlMatchChi2Tag"))),
     btlMatchTimeChi2Token_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("btlMatchTimeChi2Tag"))),
     etlMatchChi2Token_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("etlMatchChi2Tag"))),
@@ -177,8 +180,10 @@ void TrackPUIDDumper::analyze(edm::Event const& event, edm::EventSetup const& se
     //---load extended tracks
     event.getByToken(extTracksToken_, extTracksHandle_);
     auto extTracks = *extTracksHandle_.product();
-
-    //---extended tracks path length
+    event.getByToken(generalToExtendedTrkMapToken_, generalToExtendedTrkMapHandle_);
+    auto generalToExtendedTrkMap = *generalToExtendedTrkMapHandle_.product();
+    
+    //---MTD variables
     event.getByToken(btlMatchChi2Token_, btlMatchChi2Handle_);
     auto btlMatchChi2 = *btlMatchChi2Handle_.product();
     event.getByToken(btlMatchTimeChi2Token_, btlMatchTimeChi2Handle_);
@@ -219,15 +224,16 @@ void TrackPUIDDumper::analyze(edm::Event const& event, edm::EventSetup const& se
     event.getByToken(vtx4DToken_, vtx4DHandle_);
     auto vtxs4D = *vtx4DHandle_.product();
 
-    for(unsigned int itrack=0; itrack<extTracks.size(); ++itrack)
+    for(unsigned int itrack=0; itrack<tracks.size(); ++itrack)
     {
         trks3DTree_.Reset();
         trks4DTree_.Reset();
 
         auto& track = tracks[itrack];
-        auto& ext_track = extTracks[itrack];
         reco::TrackBaseRef track_ref(tracksHandle_, itrack);
-        reco::TrackBaseRef ext_track_ref(extTracksHandle_, itrack);
+        reco::TrackBaseRef ext_track_ref;
+        if(generalToExtendedTrkMap[track_ref] != -1)
+            ext_track_ref = reco::TrackBaseRef(extTracksHandle_, generalToExtendedTrkMap[track_ref]);
         
         //---Remove tracks with very low pt
         if(track.pt() < 0.4)
@@ -375,66 +381,70 @@ void TrackPUIDDumper::analyze(edm::Event const& event, edm::EventSetup const& se
         trks3DTree_.pv_t = -1.;
         trks3DTree_.puid = mva3D_(track_ref, vtxs3D[0]);
        
-        //---fill 4D tree
-        const auto& pattern4D = ext_track.hitPattern();        
-
-        trks4DTree_.idx = itrack;
-        trks4DTree_.pt = track.pt();
-        trks4DTree_.eta = track.eta();
-        trks4DTree_.phi = track.phi();
-        trks4DTree_.x = track.vx();
-        trks4DTree_.y = track.vy();
-        trks4DTree_.z = track.vz();
-        trks4DTree_.dz = track.dz(vtxs4D[0].position());
-        trks4DTree_.dxy = track.dxy(vtxs4D[0].position());
-        trks4DTree_.dzErr = track.dzError();
-        trks4DTree_.dxyErr = track.dxyError();
-        trks4DTree_.chi2 = track.chi2();
-        trks4DTree_.ndof = track.ndof();
-        trks4DTree_.t0 = t_t0;
-        trks4DTree_.sigmat0 = t_sigmat0;
-        trks4DTree_.mtdt = extTracksMTDtime.contains(ext_track_ref.id()) ? extTracksMTDtime[ext_track_ref] : -1;
-        trks4DTree_.path_len = extPathLenght.contains(ext_track_ref.id()) ? extPathLenght[ext_track_ref] : -1;
-        trks4DTree_.probPi = t_probPi;
-        trks4DTree_.probP = t_probP;
-        trks4DTree_.probK = t_probK;        
-        trks4DTree_.btlMatchChi2 = btlMatchChi2.contains(ext_track_ref.id()) ? btlMatchChi2[ext_track_ref] : -1;
-        trks4DTree_.btlMatchTimeChi2 = btlMatchTimeChi2.contains(ext_track_ref.id()) ? btlMatchTimeChi2[ext_track_ref] : -1;
-        trks4DTree_.etlMatchChi2 = etlMatchChi2.contains(ext_track_ref.id()) ? etlMatchChi2[ext_track_ref] : -1;
-        trks4DTree_.etlMatchTimeChi2 = etlMatchTimeChi2.contains(ext_track_ref.id()) ? etlMatchTimeChi2[ext_track_ref] : -1;        
-        trks4DTree_.normalizedChi2 = ext_track.normalizedChi2();
-        trks4DTree_.numberOfValidHits = track.numberOfValidHits();
-        trks4DTree_.numberOfLostHits = track.numberOfLostHits();
-        trks4DTree_.numberOfValidPixelBarrelHits = pattern4D.numberOfValidPixelBarrelHits();
-        trks4DTree_.numberOfValidPixelEndcapHits = pattern4D.numberOfValidPixelEndcapHits();
-        trks4DTree_.numberOfValidHitsBTL = pattern4D.numberOfValidTimingBTLHits();
-        trks4DTree_.numberOfValidHitsETL = pattern4D.numberOfValidTimingETLHits();
-        trks4DTree_.hasMTD = ext_track.isTimeOk();
-        trks4DTree_.genPdgId = genPdgId;
-        trks4DTree_.genPt = genPt;
-        trks4DTree_.genEta = genEta;
-        trks4DTree_.genPhi = genPhi;
-        trks4DTree_.genDR = DRMin;
-        trks4DTree_.genVtx_x = genPV.x();
-        trks4DTree_.genVtx_y = genPV.y();        
-        trks4DTree_.genVtx_z = genPV.z();        
-        trks4DTree_.genVtx_t = genPV.t();
-        trks4DTree_.pv_valid = vtxs4D[0].isValid() && !vtxs4D[0].isFake();
-        trks4DTree_.pv_ntrks = vtxs4D[0].nTracks();
-        trks4DTree_.pv_chi2 = vtxs4D[0].chi2()/vtxs4D[0].ndof();
-        trks4DTree_.pv_x = vtxs4D[0].x();
-        trks4DTree_.pv_y = vtxs4D[0].y();
-        trks4DTree_.pv_z = vtxs4D[0].z();
-        trks4DTree_.pv_t = vtxs4D[0].t();
-        trks4DTree_.puid = mva4D_(track_ref, ext_track_ref, vtxs4D[0],
-                                  t0PID, sigmat0PID, btlMatchChi2, btlMatchTimeChi2, etlMatchChi2, etlMatchTimeChi2,
-                                  extTracksMTDtime, extPathLenght);
-        
         //---Fill tree
         trks3DTree_.GetTTreePtr()->Fill();
-        trks4DTree_.GetTTreePtr()->Fill();
-    }
-    
+
+        //---fill 4D tree
+        if(!ext_track_ref.isNull())
+        {
+            const auto& pattern4D = ext_track_ref->hitPattern();        
+
+            trks4DTree_.idx = itrack;
+            trks4DTree_.pt = track.pt();
+            trks4DTree_.eta = track.eta();
+            trks4DTree_.phi = track.phi();
+            trks4DTree_.x = track.vx();
+            trks4DTree_.y = track.vy();
+            trks4DTree_.z = track.vz();
+            trks4DTree_.dz = track.dz(vtxs4D[0].position());
+            trks4DTree_.dxy = track.dxy(vtxs4D[0].position());
+            trks4DTree_.dzErr = track.dzError();
+            trks4DTree_.dxyErr = track.dxyError();
+            trks4DTree_.chi2 = track.chi2();
+            trks4DTree_.ndof = track.ndof();
+            trks4DTree_.t0 = t_t0;
+            trks4DTree_.sigmat0 = t_sigmat0;
+            trks4DTree_.mtdt = extTracksMTDtime.contains(ext_track_ref.id()) ? extTracksMTDtime[ext_track_ref] : -1;
+            trks4DTree_.path_len = extPathLenght.contains(ext_track_ref.id()) ? extPathLenght[ext_track_ref] : -1;
+            trks4DTree_.probPi = t_probPi;
+            trks4DTree_.probP = t_probP;
+            trks4DTree_.probK = t_probK;        
+            trks4DTree_.btlMatchChi2 = btlMatchChi2.contains(ext_track_ref.id()) ? btlMatchChi2[ext_track_ref] : -1;
+            trks4DTree_.btlMatchTimeChi2 = btlMatchTimeChi2.contains(ext_track_ref.id()) ? btlMatchTimeChi2[ext_track_ref] : -1;
+            trks4DTree_.etlMatchChi2 = etlMatchChi2.contains(ext_track_ref.id()) ? etlMatchChi2[ext_track_ref] : -1;
+            trks4DTree_.etlMatchTimeChi2 = etlMatchTimeChi2.contains(ext_track_ref.id()) ? etlMatchTimeChi2[ext_track_ref] : -1;        
+            trks4DTree_.normalizedChi2 = ext_track_ref->normalizedChi2();
+            trks4DTree_.numberOfValidHits = track.numberOfValidHits();
+            trks4DTree_.numberOfLostHits = track.numberOfLostHits();
+            trks4DTree_.numberOfValidPixelBarrelHits = pattern3D.numberOfValidPixelBarrelHits();
+            trks4DTree_.numberOfValidPixelEndcapHits = pattern3D.numberOfValidPixelEndcapHits();
+            trks4DTree_.numberOfValidHitsBTL = pattern4D.numberOfValidTimingBTLHits();
+            trks4DTree_.numberOfValidHitsETL = pattern4D.numberOfValidTimingETLHits();
+            trks4DTree_.hasMTD = ext_track_ref->isTimeOk();
+            trks4DTree_.genPdgId = genPdgId;
+            trks4DTree_.genPt = genPt;
+            trks4DTree_.genEta = genEta;
+            trks4DTree_.genPhi = genPhi;
+            trks4DTree_.genDR = DRMin;
+            trks4DTree_.genVtx_x = genPV.x();
+            trks4DTree_.genVtx_y = genPV.y();        
+            trks4DTree_.genVtx_z = genPV.z();        
+            trks4DTree_.genVtx_t = genPV.t();
+            trks4DTree_.pv_valid = vtxs4D[0].isValid() && !vtxs4D[0].isFake();
+            trks4DTree_.pv_ntrks = vtxs4D[0].nTracks();
+            trks4DTree_.pv_chi2 = vtxs4D[0].chi2()/vtxs4D[0].ndof();
+            trks4DTree_.pv_x = vtxs4D[0].x();
+            trks4DTree_.pv_y = vtxs4D[0].y();
+            trks4DTree_.pv_z = vtxs4D[0].z();
+            trks4DTree_.pv_t = vtxs4D[0].t();
+            trks4DTree_.puid = mva4D_(track_ref, ext_track_ref, vtxs4D[0],
+                                      t0PID, sigmat0PID, btlMatchChi2, btlMatchTimeChi2, etlMatchChi2, etlMatchTimeChi2,
+                                      extTracksMTDtime, extPathLenght);
+        
+            //---Fill tree
+            trks4DTree_.GetTTreePtr()->Fill();
+        }
+    }    
 }
 
 
