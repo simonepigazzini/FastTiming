@@ -37,32 +37,56 @@ using namespace std;
     DATA(float, simh_recoh_DPhi)                \
     DATA(float, simh_energy)                    \
     DATA(float, simh_time)                      \
-    DATA(float, simh_tof)
+    DATA(float, simh_tof)                       \
+    DATA(float, simh_clus_DR)                   \
+    DATA(float, simh_recoh_clus_DR)             \
+    DATA(float, simh_recoh_clus_DPhi)           \
+    DATA(float, simh_clus_energy)               \
+    DATA(float, simh_clus_time)                 \
+    DATA(float, simh_clus_tof)                  \
+    DATA(int, mct_nlegs)                        \
+    DATA(float, mct_pt)                         \
+    DATA(float, mct_eta)                        \
+    DATA(float, mct_phi)                        \
+    DATA(float, mct_energy)                     \
+    DATA(float, mct_convRadius)                 \
+    DATA(float, mct_convZ)                      \
+    DATA(float, mct_convPhi)                    \
+    DATA(float, mct_ele1_pt)                    \
+    DATA(float, mct_ele1_eta)                   \
+    DATA(float, mct_ele1_phi)                   \
+    DATA(float, mct_ele2_pt)                    \
+    DATA(float, mct_ele2_eta)                   \
+    DATA(float, mct_ele2_phi)                   \
+    DATA(float, mct_eles_dr)                    \
+    DATA(float, mct_ele1_dr)                    \
+    DATA(float, mct_ele2_dr)
+    
 
 #define DATA_CLASS_TABLE                        \
-    DATA(vector<float>, clus_det)               \
     DATA(vector<float>, clus_size)              \
     DATA(vector<float>, clus_size_x)            \
     DATA(vector<float>, clus_size_y)            \
     DATA(vector<float>, clus_energy)            \
     DATA(vector<float>, clus_time)              \
     DATA(vector<float>, clus_rr)                \
-    DATA(vector<float>, clus_module)            \
-    DATA(vector<float>, clus_modType)           \
     DATA(vector<float>, clus_eta)               \
     DATA(vector<float>, clus_phi)               \
     DATA(vector<float>, clus_seed_energy)       \
-    DATA(vector<float>, clus_seed_time)         \
+        DATA(vector<float>, clus_seed_time)     \
     DATA(vector<float>, clus_seed_x)            \
     DATA(vector<float>, clus_seed_y)            \
-    DATA(vector<float>, clus_local_x)           \
-    DATA(vector<float>, clus_local_y)           \
-    DATA(vector<float>, clus_local_z)           \
+    DATA(vector<float>, clus_x)                 \
+    DATA(vector<float>, clus_y)                 \
+    DATA(vector<float>, clus_z)                 \
     DATA(vector<float>, clus_global_R)          \
     DATA(vector<float>, clus_global_dist)       \
     DATA(vector<float>, clus_neu_DPhi)          \
     DATA(vector<float>, clus_neu_DEta)          \
-    DATA(vector<float>, clus_neu_DR)
+    DATA(vector<float>, clus_neu_DR)            \
+    DATA(vector<float>, clus_cele1_DR)          \
+    DATA(vector<float>, clus_cele2_DR)          
+    
     
 #include "ExternalTools/DynamicTTree/interface/DynamicTTreeInterface.h"
 

@@ -41,6 +41,9 @@
 #include "Geometry/MTDGeometryBuilder/interface/MTDGeomDetUnit.h"
 #include "Geometry/MTDGeometryBuilder/interface/RectangularMTDTopology.h"
 
+#include "RecoEgamma/EgammaMCTools/interface/PhotonMCTruthFinder.h"
+#include "RecoEgamma/EgammaMCTools/interface/PhotonMCTruth.h"
+
 #include "RecoMTD/DetLayers/interface/MTDDetLayerGeometry.h"
 #include "RecoMTD/DetLayers/interface/MTDTrayBarrelLayer.h"
 #include "RecoMTD/DetLayers/interface/MTDDetTray.h"
@@ -75,6 +78,12 @@ private:
     edm::Handle<reco::GenParticleCollection> genParticlesHandle_;
     edm::EDGetTokenT<reco::GenParticleCollection> genParticlesToken_;
 
+    //---sim hit tracker, for EGamma mc truth tool
+    edm::Handle<edm::SimTrackContainer> simTkHandle_;
+    edm::EDGetTokenT<edm::SimTrackContainer> simTkToken_;
+    edm::Handle<edm::SimVertexContainer> simVtxHandle_;
+    edm::EDGetTokenT<edm::SimVertexContainer> simVtxToken_;
+    
     //---sim MTD hits
     edm::Handle<std::vector<PSimHit> > simHitsBTLHandle_;
     edm::EDGetTokenT<std::vector<PSimHit> > simHitsBTLToken_;    
@@ -108,6 +117,9 @@ private:
     
     //---options
     BTLDetId::CrysLayout crysLayout_;
+
+    //---workers
+    PhotonMCTruthFinder photonMCTruthFinder_;
     
     //---outputs
     MTDNeutralsTree outTree_;
@@ -117,6 +129,8 @@ private:
 
 MTDNeutralsAnalyzer::MTDNeutralsAnalyzer(const edm::ParameterSet& pSet):
     genParticlesToken_(consumes<reco::GenParticleCollection>(pSet.getUntrackedParameter<edm::InputTag>("genParticlesTag"))),
+    simTkToken_(consumes<edm::SimTrackContainer>(pSet.getUntrackedParameter<edm::InputTag>("simTkTag"))),
+    simVtxToken_(consumes<edm::SimVertexContainer>(pSet.getUntrackedParameter<edm::InputTag>("simVtxTag"))),
     simHitsBTLToken_(consumes<std::vector<PSimHit> >(pSet.getUntrackedParameter<edm::InputTag>("simHitsBTLTag"))), 
     simHitsETLToken_(consumes<std::vector<PSimHit> >(pSet.getUntrackedParameter<edm::InputTag>("simHitsETLTag"))),   
     clustersBTLToken_(consumes<FTLClusterCollection>(pSet.getUntrackedParameter<edm::InputTag>("clustersBTLTag"))),    
@@ -126,7 +140,8 @@ MTDNeutralsAnalyzer::MTDNeutralsAnalyzer(const edm::ParameterSet& pSet):
     genT0Token_(consumes<float>(pSet.getUntrackedParameter<edm::InputTag>("genT0Tag"))),
     vtx3DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx3DTag"))),
     vtx4DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx4DTag"))),
-    crysLayout_((BTLDetId::CrysLayout)(pSet.getUntrackedParameter<int>("crysLayout")))
+    crysLayout_((BTLDetId::CrysLayout)(pSet.getUntrackedParameter<int>("crysLayout"))),
+    photonMCTruthFinder_()
 {
     outTree_ = MTDNeutralsTree(pSet.getUntrackedParameter<string>("outTreeName").c_str(), "4D TOFPID studies");
 }
@@ -136,6 +151,11 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
     //---load gen particles
     event.getByToken(genParticlesToken_, genParticlesHandle_);
     auto genParticles = *genParticlesHandle_.product();
+    
+    //---gen mc-truth photons
+    event.getByToken(simTkToken_, simTkHandle_);
+    event.getByToken(simVtxToken_, simVtxHandle_);
+    auto mcTruthPhotons = photonMCTruthFinder_.find(*simTkHandle_.product(), *simVtxHandle_.product());
 
     //---load sim hits
     event.getByToken(simHitsBTLToken_, simHitsBTLHandle_);
@@ -176,16 +196,16 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
     // Full 4D
     event.getByToken(vtx4DToken_, vtx4DHandle_);
     auto vtxs4D = *vtx4DHandle_.product();
-
+    
     for(auto& cand : pfCandidates)
     {
         outTree_.Reset();
         //---fill global info
         outTree_.event = event.id().event();
         outTree_.lumi = event.id().luminosityBlock();
-        outTree_.run = event.id().run();    
-
-        if(cand.pt()>0.5)
+        outTree_.run = event.id().run();            
+        
+        if(cand.pt()>0.5 && cand.particleId()>3)
         {
             outTree_.genpv_t = genPV.t();
             outTree_.genpv_z = genPV.z();            
@@ -226,7 +246,49 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
                 outTree_.gen_DR = -1;
                 outTree_.gen_pdgId = -1;
             }
-          
+
+            //---matching with conversions
+            PhotonMCTruth* mc_truth_pho=NULL;
+            float min_dr_mct = 1e6;
+            if(gen_match)
+            {
+                for(auto& mcpho : mcTruthPhotons)
+                {
+                    if(mcpho.fourMomentum().et() > 0.5  &&
+                       deltaR(mcpho.fourMomentum().eta(), mcpho.fourMomentum().phi(), gen_match->eta(), gen_match->phi()) < min_dr_mct)
+                    {
+                        min_dr_mct = deltaR(mcpho.fourMomentum().eta(), mcpho.fourMomentum().phi(), gen_match->eta(), gen_match->phi());
+                        mc_truth_pho = &mcpho;
+                    }
+                }
+                if(mc_truth_pho)
+                {
+                    outTree_.mct_convRadius = mc_truth_pho->vertex().vect().rho();
+                    outTree_.mct_convPhi = mc_truth_pho->vertex().vect().phi();
+                    outTree_.mct_convZ = mc_truth_pho->vertex().vect().z();            
+                    outTree_.mct_energy = mc_truth_pho->fourMomentum().e();
+                    outTree_.mct_eta = mc_truth_pho->fourMomentum().eta();
+                    outTree_.mct_phi = mc_truth_pho->fourMomentum().phi();
+                    outTree_.mct_pt = mc_truth_pho->fourMomentum().et();
+                    auto conversion_legs = mc_truth_pho->electrons();
+                    outTree_.mct_nlegs = conversion_legs.size();
+                    if(conversion_legs.size()>0)
+                    {
+                        outTree_.mct_ele1_pt = conversion_legs[0].fourMomentum().et();
+                        outTree_.mct_ele1_eta = conversion_legs[0].fourMomentum().eta();
+                        outTree_.mct_ele1_phi = conversion_legs[0].fourMomentum().phi();
+                        if(conversion_legs.size()>1)
+                        {
+                            outTree_.mct_ele2_pt = conversion_legs[1].fourMomentum().et();
+                            outTree_.mct_ele2_eta = conversion_legs[1].fourMomentum().eta();
+                            outTree_.mct_ele2_phi = conversion_legs[1].fourMomentum().phi();
+                            outTree_.mct_eles_dr = deltaR(outTree_.mct_ele1_eta, outTree_.mct_ele1_phi,
+                                                          outTree_.mct_ele2_eta, outTree_.mct_ele2_phi);
+                        }
+                    }
+                }
+            }
+            
             if(std::abs(cand.eta()) < 1.5)
             {
                 //---BTL clusters loop
@@ -254,41 +316,42 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
 	  
                         MTDDetId mtdId(id);
                         int RR = 0;
-                        int module = 0;
-                        int modType = 0;
 	  
                         if ( mtdId.mtdSubDetector() == MTDDetId::BTL )
                         {
                             BTLDetId btlId(id);
                             RR = btlId.mtdRR();
-                            module = btlId.module();
-                            modType = btlId.modType();
                         }
 	  
                         outTree_.clus_n += 1;    
-                        outTree_.clus_det->push_back(1);
                         outTree_.clus_size->push_back(size);
                         outTree_.clus_size_x->push_back(sizeX);
                         outTree_.clus_size_y->push_back(sizeY);
                         outTree_.clus_energy->push_back(energy);
                         outTree_.clus_time->push_back(time);
                         outTree_.clus_rr->push_back(RR);
-                        outTree_.clus_module->push_back(module);
-                        outTree_.clus_modType->push_back(modType);
                         outTree_.clus_eta->push_back(gp.eta());
                         outTree_.clus_phi->push_back(gp.phi());
                         outTree_.clus_seed_energy->push_back(seed_energy);
                         outTree_.clus_seed_time->push_back(seed_time);
                         outTree_.clus_seed_x->push_back(seed_x);
                         outTree_.clus_seed_y->push_back(seed_y);
-                        outTree_.clus_local_x->push_back(lp.x());
-                        outTree_.clus_local_y->push_back(lp.y());
-                        outTree_.clus_local_z->push_back(lp.z());
+                        outTree_.clus_x->push_back(gp.x());
+                        outTree_.clus_y->push_back(gp.y());
+                        outTree_.clus_z->push_back(gp.z());
                         outTree_.clus_global_R->push_back(sqrt(gp.perp2()));
                         outTree_.clus_global_dist->push_back(sqrt(pow(gp.x()-genPV.x(), 2)+pow(gp.y()-genPV.y(), 2)+pow(gp.z()-genPV.z(), 2)));
                         outTree_.clus_neu_DEta->push_back(gp.eta()-cand.eta());
                         outTree_.clus_neu_DPhi->push_back(deltaPhi(cand.phi(), gp.phi()));  
                         outTree_.clus_neu_DR->push_back(deltaR(cand.eta(), cand.phi(), gp.eta(), gp.phi()));
+                        outTree_.clus_cele1_DR->push_back(-1);
+                        outTree_.clus_cele2_DR->push_back(-1);
+                        if(outTree_.mct_nlegs>0)
+                        {
+                            outTree_.clus_cele1_DR->back() = deltaR(outTree_.mct_ele1_eta, outTree_.mct_ele1_phi, gp.eta(), gp.phi());
+                            if(outTree_.mct_nlegs>1)
+                                outTree_.clus_cele2_DR->back() = deltaR(outTree_.mct_ele2_eta, outTree_.mct_ele2_phi, gp.eta(), gp.phi());
+                        }
                     }
                 }
                 unsigned int min_dr_pos = std::min_element(outTree_.clus_neu_DR->begin(), outTree_.clus_neu_DR->end())-outTree_.clus_neu_DR->begin();
@@ -300,15 +363,18 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
                     outTree_.tof = outTree_.clus_global_dist->at(min_dr_pos)/2.99792458e1;
                     outTree_.mtdTime = outTree_.clus_time->at(min_dr_pos);
                     outTree_.mtdEnergy = outTree_.clus_energy->at(min_dr_pos);
+                    outTree_.mct_ele1_dr = outTree_.clus_cele1_DR->at(min_dr_pos);
+                    outTree_.mct_ele2_dr = outTree_.clus_cele2_DR->at(min_dr_pos);                    
                 }
 
                 //---sim hits
                 if(gen_match)
                 {
-                    float minDR_simh = 1e6;
+                    float min_time = 1e9;
+                    float minDR_simh_gen = 1e6;
                     for(auto& simHit : simHitsBTL)
                     {
-                        if(simHit.tof()<0 || simHit.tof()>25 || simHit.energyLoss()*1000<1.5)
+                        if(simHit.tof()<0 || simHit.tof()>25)
                             continue;
 
                         BTLDetId id = simHit.detUnitId();
@@ -319,14 +385,15 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
                                 
                         LocalPoint lp_entry(simHit.entryPoint().x()/10., simHit.entryPoint().y()/10., simHit.entryPoint().z()/10.);
                         GlobalPoint gp_entry = det->toGlobal(topo.pixelToModuleLocalPoint(lp_entry,id.row(topo.nrows()),id.column(topo.nrows())));
-                        auto dr = deltaR(gp_entry.eta(), gp_entry.phi(), gen_match->eta(), gen_match->phi());
-                        if(dr < minDR_simh)
+                        auto dr_gen = deltaR(gp_entry.eta(), gp_entry.phi(), gen_match->eta(), gen_match->phi());
+                        //---match with gen candidate
+                        if(dr_gen < minDR_simh_gen)
                         {
-                            minDR_simh = dr;
+                            minDR_simh_gen = dr_gen;
                             outTree_.simh_energy = simHit.energyLoss()*1000.;
                             outTree_.simh_time = simHit.tof();
                             outTree_.simh_tof = sqrt(pow(gp_entry.x()-genPV.x(), 2)+pow(gp_entry.y()-genPV.y(), 2)+pow(gp_entry.z()-genPV.z(), 2))/2.99792458e1;
-                            outTree_.simh_DR = dr;
+                            outTree_.simh_DR = dr_gen;
                             if(min_dr_pos < outTree_.clus_neu_DR->size())
                             {
                                 auto r_eta = outTree_.clus_eta->at(min_dr_pos);
@@ -335,9 +402,32 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
                                 outTree_.simh_recoh_DPhi = deltaPhi(gp_entry.phi(), r_phi);                                
                             }
                         }
+
+                        //---match with cluster (select the first one within DR<0.04 to avoid selecting wrong simhit in the same crystal)
+                        if(min_dr_pos < outTree_.clus_neu_DR->size())
+                        {
+                            auto dr_clus = deltaR(gp_entry.eta(), gp_entry.phi(), outTree_.clus_eta->at(min_dr_pos), outTree_.clus_phi->at(min_dr_pos));
+                            auto dphi_clus = deltaPhi(gp_entry.phi(), outTree_.clus_phi->at(min_dr_pos));
+                            auto dx = fabs(gp_entry.x()-outTree_.clus_x->at(min_dr_pos));
+                            auto dy = fabs(gp_entry.y()-outTree_.clus_y->at(min_dr_pos));
+                            auto dz = fabs(gp_entry.z()-outTree_.clus_z->at(min_dr_pos));                            
+                            if(dr_clus<0.03 && dphi_clus<0.005 && simHit.tof()<min_time && fabs(simHit.tof()-outTree_.clus_time->at(min_dr_pos))<0.14)
+                            {
+                                min_time = simHit.tof();
+                                outTree_.simh_clus_energy = simHit.energyLoss()*1000.;
+                                outTree_.simh_clus_time = simHit.tof();
+                                outTree_.simh_clus_tof = sqrt(pow(gp_entry.x()-genPV.x(), 2)+pow(gp_entry.y()-genPV.y(), 2)+pow(gp_entry.z()-genPV.z(), 2))/2.99792458e1;
+                                outTree_.simh_clus_DR = dr_clus;
+                                auto r_eta = outTree_.clus_eta->at(min_dr_pos);
+                                auto r_phi = outTree_.clus_phi->at(min_dr_pos);
+                                outTree_.simh_recoh_clus_DR = deltaR(gp_entry.eta(), gp_entry.phi(), r_eta, r_phi);
+                                outTree_.simh_recoh_clus_DPhi = deltaPhi(gp_entry.phi(), r_phi);                                
+                            }
+                        }
                     }
                 }
             }
+            
             // else if(std::abs(cand.eta()) < 3.)
             // {
             //     for (auto clusIt : clustersETL)

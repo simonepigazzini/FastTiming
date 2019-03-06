@@ -2,6 +2,8 @@ import FWCore.ParameterSet.Config as cms
 
 MTDNeutralsAnalyzer = cms.EDAnalyzer('MTDNeutralsAnalyzer',
                                      genParticlesTag = cms.untracked.InputTag("genParticles"),
+                                     simTkTag = cms.untracked.InputTag("g4SimHits"),
+                                     simVtxTag = cms.untracked.InputTag("g4SimHits"),
                                      simHitsBTLTag = cms.untracked.InputTag("g4SimHits:FastTimerHitsBarrel"),
                                      simHitsETLTag = cms.untracked.InputTag("g4SimHits:FastTimerHitsEndcap"),
                                      clustersBTLTag = cms.untracked.InputTag("mtdClusters:FTLBarrel"),                                     
