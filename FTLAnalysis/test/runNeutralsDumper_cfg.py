@@ -38,6 +38,11 @@ options.register('useparent',
                  VarParsing.multiplicity.singleton,
                  VarParsing.varType.bool,
                  "Load data from parent datasets")
+options.register('storeclusters',
+                 True,
+                 VarParsing.multiplicity.singleton,
+                 VarParsing.varType.bool,
+                 "store vector with all MTD cluster info")
 options.register('debug',
                  False,
                  VarParsing.multiplicity.singleton,
@@ -152,6 +157,7 @@ process.source = cms.Source(
 # Analyzer
 process.load('PrecisionTiming.FTLAnalysis.MTDNeutralsAnalyzer_cfi')
 MTDDumper = process.MTDNeutralsAnalyzer
+MTDDumper.storeClusters = options.storeclusters
 
 # Output TFile
 process.TFileService = cms.Service(

@@ -14,6 +14,7 @@ MTDNeutralsAnalyzer = cms.EDAnalyzer('MTDNeutralsAnalyzer',
                                      genT0Tag = cms.untracked.InputTag("genParticles", "t0"),
                                      vtx3DTag = cms.untracked.InputTag("offlinePrimaryVertices", ""),
                                      vtx4DTag = cms.untracked.InputTag("offlinePrimaryVertices4D", ""),
+                                     storeClusters = cms.untracked.bool(True),
                                      crysLayout = cms.untracked.int32(3),                             
                                      outTreeName = cms.untracked.string("neu_tree")
 )

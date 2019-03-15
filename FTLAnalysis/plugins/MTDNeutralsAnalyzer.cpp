@@ -2,6 +2,7 @@
 #define _MTD_NEUTRALS_ANALIZER_
 
 #include "TMath.h"
+#include "TVector3.h"
 
 #include "FWCore/Utilities/interface/BranchType.h"
 #include "FWCore/Framework/interface/ESHandle.h"
@@ -53,7 +54,44 @@
 
 #include "PrecisionTiming/FTLAnalysis/interface/MTDNeutralsTree.h"
 
-using namespace std;                             
+using namespace std;
+
+class MTDHitMatchingInfo
+{
+public:
+    MTDHitMatchingInfo()
+        {
+            hit = -1;
+            estChi2 = std::numeric_limits<double>::max();
+            timeChi2 = std::numeric_limits<double>::max();
+        }
+
+    MTDHitMatchingInfo(int this_hit, double this_estChi2, double this_timeChi2) :
+        hit(this_hit),
+        estChi2(this_estChi2),
+        timeChi2(this_timeChi2)
+        { }
+    
+    MTDHitMatchingInfo(const MTDHitMatchingInfo& a) :
+        hit(a.hit),
+        estChi2(a.estChi2),
+        timeChi2(a.timeChi2)
+        { }
+    //Operator used to sort the hits while performing the matching step at the MTD
+    inline bool operator<(const MTDHitMatchingInfo &m2) const {
+        //only for good matching in time use estChi2, otherwise use mostly time compatibility
+        if (timeChi2<5 && m2.timeChi2<5)
+            return chi2(5.) < m2.chi2(5.);
+        else
+            return chi2(10.) < m2.chi2(10.);
+    }
+
+    inline double chi2(float timeWeight=1.) const { return estChi2 + timeWeight*timeChi2; }
+
+    int hit;
+    double estChi2;
+    double timeChi2;
+};
 
 class MTDNeutralsAnalyzer : public edm::EDAnalyzer
 {
@@ -69,6 +107,9 @@ public:
     virtual void beginJob() override {};
     virtual void analyze(edm::Event const&, edm::EventSetup const&) override;
     virtual void endJob() override {};
+
+    //---utils
+    pair<float, float> getNeutralsMTDMatchingChi2s(reco::PFCandidate& cand, GlobalPoint& mtd_gp, const math::XYZTLorentzVectorD& genPV, float mtd_time); 
     
 private:
     //---inputs
@@ -116,6 +157,7 @@ private:
     edm::Handle<vector<reco::Vertex> >        vtx4DHandle_;    
     
     //---options
+    bool storeClusters_;
     BTLDetId::CrysLayout crysLayout_;
 
     //---workers
@@ -140,6 +182,7 @@ MTDNeutralsAnalyzer::MTDNeutralsAnalyzer(const edm::ParameterSet& pSet):
     genT0Token_(consumes<float>(pSet.getUntrackedParameter<edm::InputTag>("genT0Tag"))),
     vtx3DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx3DTag"))),
     vtx4DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx4DTag"))),
+    storeClusters_(pSet.getUntrackedParameter<bool>("storeClusters")),
     crysLayout_((BTLDetId::CrysLayout)(pSet.getUntrackedParameter<int>("crysLayout"))),
     photonMCTruthFinder_()
 {
@@ -163,7 +206,6 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
     event.getByToken(simHitsETLToken_, simHitsETLHandle_);
     auto simHitsETL = *simHitsETLHandle_.product();
 
-    
     //---get the MTD geometry
     edm::ESHandle<MTDGeometry> geoHandle;
     setup.get<MTDDigiGeometryRecord>().get(geoHandle);
@@ -230,7 +272,7 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
                     }
                 }
             }
-            if(gen_match)
+            if(gen_match && dr_min<0.5)
             {
                 outTree_.gen_pt = gen_match->pt();
                 outTree_.gen_eta = gen_match->eta();                
@@ -239,13 +281,7 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
                 outTree_.gen_pdgId = gen_match->pdgId();
             }
             else
-            {
-                outTree_.gen_pt = -1;
-                outTree_.gen_eta = -1;
-                outTree_.gen_phi = -1;
-                outTree_.gen_DR = -1;
-                outTree_.gen_pdgId = -1;
-            }
+                continue;
 
             //---matching with conversions
             PhotonMCTruth* mc_truth_pho=NULL;
@@ -291,6 +327,7 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
             
             if(std::abs(cand.eta()) < 1.5)
             {
+                std::set<MTDHitMatchingInfo> match;                
                 //---BTL clusters loop
                 for(auto& clusIt : clustersBTL)
                 {    
@@ -313,7 +350,14 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
                         MeasurementPoint mp(cluster.x(),cluster.y());
                         LocalPoint lp = topo.localPosition(mp);
                         GlobalPoint gp = det->toGlobal(lp);
-	  
+
+                        auto dr_clus_neu = deltaR(cand.eta(), cand.phi(), gp.eta(), gp.phi());
+                        if(dr_clus_neu > 0.1)
+                            continue;
+
+                        auto mtd_neu_match_chi2s = getNeutralsMTDMatchingChi2s(cand, gp, genPV, time);
+                        match.insert(MTDHitMatchingInfo(outTree_.clus_n, mtd_neu_match_chi2s.first, mtd_neu_match_chi2s.second));
+                        
                         MTDDetId mtdId(id);
                         int RR = 0;
 	  
@@ -321,8 +365,8 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
                         {
                             BTLDetId btlId(id);
                             RR = btlId.mtdRR();
-                        }
-	  
+                        }                       
+                        
                         outTree_.clus_n += 1;    
                         outTree_.clus_size->push_back(size);
                         outTree_.clus_size_x->push_back(sizeX);
@@ -344,6 +388,8 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
                         outTree_.clus_neu_DEta->push_back(gp.eta()-cand.eta());
                         outTree_.clus_neu_DPhi->push_back(deltaPhi(cand.phi(), gp.phi()));  
                         outTree_.clus_neu_DR->push_back(deltaR(cand.eta(), cand.phi(), gp.eta(), gp.phi()));
+                        outTree_.clus_neu_schi2->push_back(mtd_neu_match_chi2s.first);
+                        outTree_.clus_neu_tchi2->push_back(mtd_neu_match_chi2s.second);                        
                         outTree_.clus_cele1_DR->push_back(-1);
                         outTree_.clus_cele2_DR->push_back(-1);
                         if(outTree_.mct_nlegs>0)
@@ -355,16 +401,32 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
                     }
                 }
                 unsigned int min_dr_pos = std::min_element(outTree_.clus_neu_DR->begin(), outTree_.clus_neu_DR->end())-outTree_.clus_neu_DR->begin();
-                if(min_dr_pos < outTree_.clus_neu_DR->size())
+                auto min_chi2_pos = match.size()>0 ? match.begin()->hit : -1;
+                // if(min_dr_pos < outTree_.clus_neu_DR->size())
+                // {
+                //     outTree_.chosen_clus_pos = min_dr_pos;
+                //     outTree_.minDR = outTree_.clus_neu_DR->at(min_dr_pos);
+                //     outTree_.minDEta = outTree_.clus_neu_DEta->at(min_dr_pos);                
+                //     outTree_.minDPhi = outTree_.clus_neu_DPhi->at(min_dr_pos);
+                //     outTree_.tof = outTree_.clus_global_dist->at(min_dr_pos)/2.99792458e1;
+                //     outTree_.mtdTime = outTree_.clus_time->at(min_dr_pos);
+                //     outTree_.mtdEnergy = outTree_.clus_energy->at(min_dr_pos);
+                //     outTree_.mct_ele1_dr = outTree_.clus_cele1_DR->at(min_dr_pos);
+                //     outTree_.mct_ele2_dr = outTree_.clus_cele2_DR->at(min_dr_pos);                    
+                // }
+                if(min_chi2_pos > -1)
                 {
-                    outTree_.minDR = outTree_.clus_neu_DR->at(min_dr_pos);
-                    outTree_.minDEta = outTree_.clus_neu_DEta->at(min_dr_pos);                
-                    outTree_.minDPhi = outTree_.clus_neu_DPhi->at(min_dr_pos);
-                    outTree_.tof = outTree_.clus_global_dist->at(min_dr_pos)/2.99792458e1;
-                    outTree_.mtdTime = outTree_.clus_time->at(min_dr_pos);
-                    outTree_.mtdEnergy = outTree_.clus_energy->at(min_dr_pos);
-                    outTree_.mct_ele1_dr = outTree_.clus_cele1_DR->at(min_dr_pos);
-                    outTree_.mct_ele2_dr = outTree_.clus_cele2_DR->at(min_dr_pos);                    
+                    outTree_.chosen_clus_pos = min_chi2_pos;
+                    outTree_.minDR = outTree_.clus_neu_DR->at(min_chi2_pos);
+                    outTree_.minDEta = outTree_.clus_neu_DEta->at(min_chi2_pos);                
+                    outTree_.minDPhi = outTree_.clus_neu_DPhi->at(min_chi2_pos);
+                    outTree_.minSChi2 = outTree_.clus_neu_schi2->at(min_chi2_pos);
+                    outTree_.minTChi2 = outTree_.clus_neu_tchi2->at(min_chi2_pos);                    
+                    outTree_.tof = outTree_.clus_global_dist->at(min_chi2_pos)/2.99792458e1;
+                    outTree_.mtdTime = outTree_.clus_time->at(min_chi2_pos);
+                    outTree_.mtdEnergy = outTree_.clus_energy->at(min_chi2_pos);
+                    outTree_.mct_ele1_dr = outTree_.clus_cele1_DR->at(min_chi2_pos);
+                    outTree_.mct_ele2_dr = outTree_.clus_cele2_DR->at(min_chi2_pos);                    
                 }
 
                 //---sim hits
@@ -394,32 +456,32 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
                             outTree_.simh_time = simHit.tof();
                             outTree_.simh_tof = sqrt(pow(gp_entry.x()-genPV.x(), 2)+pow(gp_entry.y()-genPV.y(), 2)+pow(gp_entry.z()-genPV.z(), 2))/2.99792458e1;
                             outTree_.simh_DR = dr_gen;
-                            if(min_dr_pos < outTree_.clus_neu_DR->size())
+                            if(min_chi2_pos > -1)// < outTree_.clus_neu_DR->size())
                             {
-                                auto r_eta = outTree_.clus_eta->at(min_dr_pos);
-                                auto r_phi = outTree_.clus_phi->at(min_dr_pos);
+                                auto r_eta = outTree_.clus_eta->at(min_chi2_pos);
+                                auto r_phi = outTree_.clus_phi->at(min_chi2_pos);
                                 outTree_.simh_recoh_DR = deltaR(gp_entry.eta(), gp_entry.phi(), r_eta, r_phi);
                                 outTree_.simh_recoh_DPhi = deltaPhi(gp_entry.phi(), r_phi);                                
                             }
                         }
 
                         //---match with cluster (select the first one within DR<0.04 to avoid selecting wrong simhit in the same crystal)
-                        if(min_dr_pos < outTree_.clus_neu_DR->size())
+                        if(min_chi2_pos > -1)// < outTree_.clus_neu_DR->size())
                         {
-                            auto dr_clus = deltaR(gp_entry.eta(), gp_entry.phi(), outTree_.clus_eta->at(min_dr_pos), outTree_.clus_phi->at(min_dr_pos));
-                            auto dphi_clus = deltaPhi(gp_entry.phi(), outTree_.clus_phi->at(min_dr_pos));
-                            auto dx = fabs(gp_entry.x()-outTree_.clus_x->at(min_dr_pos));
-                            auto dy = fabs(gp_entry.y()-outTree_.clus_y->at(min_dr_pos));
-                            auto dz = fabs(gp_entry.z()-outTree_.clus_z->at(min_dr_pos));                            
-                            if(dr_clus<0.03 && dphi_clus<0.005 && simHit.tof()<min_time && fabs(simHit.tof()-outTree_.clus_time->at(min_dr_pos))<0.14)
+                            auto dr_clus = deltaR(gp_entry.eta(), gp_entry.phi(), outTree_.clus_eta->at(min_chi2_pos), outTree_.clus_phi->at(min_chi2_pos));
+                            auto dphi_clus = deltaPhi(gp_entry.phi(), outTree_.clus_phi->at(min_chi2_pos));
+                            auto dx = fabs(gp_entry.x()-outTree_.clus_x->at(min_chi2_pos));
+                            auto dy = fabs(gp_entry.y()-outTree_.clus_y->at(min_chi2_pos));
+                            auto dz = fabs(gp_entry.z()-outTree_.clus_z->at(min_chi2_pos));                            
+                            if(dr_clus<0.03 && dphi_clus<0.005 && simHit.tof()<min_time && fabs(simHit.tof()-outTree_.clus_time->at(min_chi2_pos))<0.14)
                             {
                                 min_time = simHit.tof();
                                 outTree_.simh_clus_energy = simHit.energyLoss()*1000.;
                                 outTree_.simh_clus_time = simHit.tof();
                                 outTree_.simh_clus_tof = sqrt(pow(gp_entry.x()-genPV.x(), 2)+pow(gp_entry.y()-genPV.y(), 2)+pow(gp_entry.z()-genPV.z(), 2))/2.99792458e1;
                                 outTree_.simh_clus_DR = dr_clus;
-                                auto r_eta = outTree_.clus_eta->at(min_dr_pos);
-                                auto r_phi = outTree_.clus_phi->at(min_dr_pos);
+                                auto r_eta = outTree_.clus_eta->at(min_chi2_pos);
+                                auto r_phi = outTree_.clus_phi->at(min_chi2_pos);
                                 outTree_.simh_recoh_clus_DR = deltaR(gp_entry.eta(), gp_entry.phi(), r_eta, r_phi);
                                 outTree_.simh_recoh_clus_DPhi = deltaPhi(gp_entry.phi(), r_phi);                                
                             }
@@ -504,11 +566,60 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
             // }
             
             //---Fill trees
+            // clear cluster info for 200 PU
+            if(!storeClusters_)
+            {
+                outTree_.clus_size->clear();
+                outTree_.clus_size_x->clear();
+                outTree_.clus_size_y->clear();
+                outTree_.clus_energy->clear();
+                outTree_.clus_time->clear();
+                outTree_.clus_rr->clear();
+                outTree_.clus_eta->clear();
+                outTree_.clus_phi->clear();
+                outTree_.clus_seed_energy->clear();
+                outTree_.clus_seed_time->clear();
+                outTree_.clus_seed_x->clear();
+                outTree_.clus_seed_y->clear();
+                outTree_.clus_x->clear();
+                outTree_.clus_y->clear();
+                outTree_.clus_z->clear();
+                outTree_.clus_global_R->clear();
+                outTree_.clus_global_dist->clear();
+                outTree_.clus_neu_DEta->clear();
+                outTree_.clus_neu_DPhi->clear();
+                outTree_.clus_neu_DR->clear();
+                outTree_.clus_neu_schi2->clear();
+                outTree_.clus_neu_tchi2->clear();
+                outTree_.clus_cele1_DR->clear();
+                outTree_.clus_cele2_DR->clear();
+            }
+            
             outTree_.GetTTreePtr()->Fill();                    
         }
     }
 }
 
+pair<float, float> MTDNeutralsAnalyzer::getNeutralsMTDMatchingChi2s(reco::PFCandidate& cand, GlobalPoint& mtd_gp, const math::XYZTLorentzVectorD& genPV, float mtd_time)
+{
+    //---space chi2    
+    TVector3 cand_pos_at_mtd;
+    cand_pos_at_mtd.SetPtEtaPhi(mtd_gp.perp(), cand.eta(), cand.phi());
+    auto s_chi2 = pow((cand_pos_at_mtd.z()-mtd_gp.z())/(5.6/sqrt(12)/2), 2) +
+        pow(deltaPhi(cand_pos_at_mtd.Phi(), mtd_gp.phi())*mtd_gp.perp()/(11.7/sqrt(12)/2), 2);
+
+    //----time chi2
+    auto tof = sqrt(pow(mtd_gp.x()-genPV.x(), 2)+pow(mtd_gp.y()-genPV.y(), 2)+pow(mtd_gp.z()-genPV.z(), 2))/2.99792458e1;
+    tof -= 13.25*deltaPhi(cand.phi(), mtd_gp.phi())*deltaPhi(cand.phi(), mtd_gp.phi());
+    auto t_chi2 = pow(mtd_time-tof-genPV.t(), 2)/(0.05*0.05);
+
+    // cout << "SUKA" << endl;
+    // cout << deltaPhi(cand_pos_at_mtd.Phi(), mtd_gp.phi())*mtd_gp.perp() << " " << (cand_pos_at_mtd.z()-mtd_gp.z()) << endl;
+    // cout << pow(deltaPhi(cand_pos_at_mtd.Phi(), mtd_gp.phi())*mtd_gp.perp()/(0.3/sqrt(12)/2), 2) << " " << pow((cand_pos_at_mtd.z()-mtd_gp.z())/(5.6/sqrt(12)/2), 2) << endl;
+    // cout << cand.eta() << " " << cand.positionAtECALEntrance().eta() << " " << cand_pos_at_mtd.Perp() << " " << mtd_gp.perp() << " " << s_chi2 << " " << t_chi2 << endl;
+    
+    return make_pair(s_chi2, t_chi2);
+}
 
 DEFINE_FWK_MODULE(MTDNeutralsAnalyzer);
 

@@ -23,7 +23,9 @@ TrackPUIDDumper = cms.EDAnalyzer('TrackPUIDDumper',
                                  genT0Tag = cms.untracked.InputTag("genParticles", "t0", "HLT"),
                                  vtx3DTag = cms.untracked.InputTag("offlinePrimaryVertices", "", "RECO"),
                                  vtx4DTag = cms.untracked.InputTag("offlinePrimaryVertices4D", ""),                                        
-                                 trackPUID_3DBDT_weights_file = cms.untracked.FileInPath("PrecisionTiming/FTLAnalysis/data/bo_optimized_clf3D_PMV11_v7.xml"),
-                                 trackPUID_4DBDT_weights_file = cms.untracked.FileInPath("PrecisionTiming/FTLAnalysis/data/bo_optimized_clf4D_PMV11_v7.xml"),
+                                 trackPUID_3DBDT_weights_file = cms.untracked.FileInPath("PrecisionTiming/FTLAnalysis/data/bo_optimized_clf3D_PMV13_v1.xml"),
+                                 trackPUID_4DBDT_weights_file = cms.untracked.FileInPath("PrecisionTiming/FTLAnalysis/data/bo_optimized_clf4D_PMV13_v1.xml"),
+                                 # trackPUID_3DBDT_weights_file = cms.untracked.FileInPath("PrecisionTiming/FTLAnalysis/data/test_xgbmodel_clf3D.model"),
+                                 # trackPUID_4DBDT_weights_file = cms.untracked.FileInPath("PrecisionTiming/FTLAnalysis/data/test_xgbmodel_clf4D.model"),
                                  trksTreeName = cms.untracked.string("trks_tree")
 )

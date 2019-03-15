@@ -1,5 +1,5 @@
-#ifndef _MTD_NEUTRALS__TREE_
-#define _MTD_NEUTRALS__TREE_
+#ifndef _MTD_NEUTRALS_TREE_
+#define _MTD_NEUTRALS_TREE_
 
 #include "ExternalTools/DynamicTTree/interface/DynamicTTreeBase.h"
 
@@ -26,9 +26,12 @@ using namespace std;
     DATA(float, gen_phi)                        \
     DATA(float, gen_DR)                         \
     DATA(int, gen_pdgId)                        \
+    DATA(int, chosen_clus_pos)                  \
     DATA(float, minDR)                          \
     DATA(float, minDEta)                        \
     DATA(float, minDPhi)                        \
+    DATA(float, minSChi2)                       \
+    DATA(float, minTChi2)                       \
     DATA(float, tof)                            \
     DATA(float, mtdTime)                        \
     DATA(float, mtdEnergy)                      \
@@ -62,7 +65,6 @@ using namespace std;
     DATA(float, mct_ele1_dr)                    \
     DATA(float, mct_ele2_dr)
     
-
 #define DATA_CLASS_TABLE                        \
     DATA(vector<float>, clus_size)              \
     DATA(vector<float>, clus_size_x)            \
@@ -84,10 +86,29 @@ using namespace std;
     DATA(vector<float>, clus_neu_DPhi)          \
     DATA(vector<float>, clus_neu_DEta)          \
     DATA(vector<float>, clus_neu_DR)            \
+    DATA(vector<float>, clus_neu_schi2)         \
+    DATA(vector<float>, clus_neu_tchi2)         \
     DATA(vector<float>, clus_cele1_DR)          \
     DATA(vector<float>, clus_cele2_DR)          
     
-    
+#include "ExternalTools/DynamicTTree/interface/DynamicTTreeInterface.h"
+
+//---Define the TTree branches
+#define DYNAMIC_TREE_NAME MTDNeutralsToyTree
+
+#define DATA_TABLE                              \
+    DATA(float, vtx_z)                          \
+    DATA(float, vtx_t)                          \
+    DATA(int, barrel_npho)                      \
+    DATA(float, barrel_sumet)           
+
+#define DATA_CLASS_TABLE                        \
+    DATA(vector<double>, t_res)                 \
+    DATA(vector<int>, barrel_mtd_noeff_npho)    \
+    DATA(vector<float>, barrel_mtd_noeff_sumet) \
+    DATA(vector<int>, barrel_mtd_npho)          \
+    DATA(vector<float>, barrel_mtd_sumet)                   
+
 #include "ExternalTools/DynamicTTree/interface/DynamicTTreeInterface.h"
 
 #endif

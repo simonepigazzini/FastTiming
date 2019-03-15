@@ -1,5 +1,6 @@
 <use name="root"/>
 <use name="roottmva"/>
+<use name="xgboost"/>
 <use name="FWCore/Framework"/>
 <use name="DataFormats/VertexReco"/>
 <use name="DataFormats/TrackReco"/>
