@@ -472,7 +472,7 @@ void MTDNeutralsAnalyzer::analyze(edm::Event const& event, edm::EventSetup const
                             auto dphi_clus = deltaPhi(gp_entry.phi(), outTree_.clus_phi->at(min_chi2_pos));
                             auto dx = fabs(gp_entry.x()-outTree_.clus_x->at(min_chi2_pos));
                             auto dy = fabs(gp_entry.y()-outTree_.clus_y->at(min_chi2_pos));
-                            auto dz = fabs(gp_entry.z()-outTree_.clus_z->at(min_chi2_pos));                            
+                            auto dz = fabs(gp_entry.z()-outTree_.clus_z->at(min_chi2_pos));
                             if(dr_clus<0.03 && dphi_clus<0.005 && simHit.tof()<min_time && fabs(simHit.tof()-outTree_.clus_time->at(min_chi2_pos))<0.14)
                             {
                                 min_time = simHit.tof();

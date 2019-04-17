@@ -25,7 +25,8 @@ MTD4DVertexingAnalyzer = cms.EDAnalyzer('MTD4DVertexingAnalyzer',
                                         vtx4DTag = cms.untracked.InputTag("offlinePrimaryVertices4D", ""),
                                         vtx4DNoPIDTag = cms.untracked.InputTag("offlinePrimaryVertices4DnoPID", ""),                                        
                                         trackPUID_3DBDT_weights_file = cms.FileInPath("PrecisionTiming/FTLAnalysis/data/bo_optimized_clf3D_PMV13_v1.xml"),
-                                        trackPUID_4DBDT_weights_file = cms.FileInPath("PrecisionTiming/FTLAnalysis/data/bo_optimized_clf4D_PMV13_v1.xml"),
+                                        #trackPUID_4DBDT_weights_file = cms.FileInPath("PrecisionTiming/FTLAnalysis/data/bo_optimized_clf4D_PMV13_v1.xml"),
+                                        trackPUID_4DBDT_weights_file = cms.FileInPath("PrecisionTiming/FTLAnalysis/data/bo_optimized_clf4D_PMV13_MTDquality_v1.xml"),
                                         vtxsTreeName = cms.untracked.string("vtxs_tree"),
                                         trksTreeName = cms.untracked.string("trks_tree")
 )

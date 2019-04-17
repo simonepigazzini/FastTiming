@@ -121,7 +121,7 @@ private:
     //---options
 
     //---outputs
-    TrackPUIDMVA mva3D_;
+    //TrackPUIDMVA mva3D_;
     TrackPUIDMVA mva4D_;    
     MTD4DTree vtxsTree_;
     MTDTOFPIDTree trksTree_;
@@ -156,7 +156,7 @@ MTD4DVertexingAnalyzer::MTD4DVertexingAnalyzer(const edm::ParameterSet& pSet):
     vtx4DToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx4DTag"))),
     vtxScores4DToken_(consumes<edm::ValueMap<float> >(pSet.getUntrackedParameter<edm::InputTag>("vtx4DTag"))),
     vtx4DNoPIDToken_(consumes<vector<reco::Vertex> >(pSet.getUntrackedParameter<edm::InputTag>("vtx4DNoPIDTag"))),
-    mva3D_(pSet.getParameter<edm::FileInPath>("trackPUID_3DBDT_weights_file").fullPath(), false),
+    //mva3D_(pSet.getParameter<edm::FileInPath>("trackPUID_3DBDT_weights_file").fullPath(), false),
     mva4D_(pSet.getParameter<edm::FileInPath>("trackPUID_4DBDT_weights_file").fullPath(), true)
 {
     vtxsTree_ = MTD4DTree(pSet.getUntrackedParameter<string>("vtxsTreeName").c_str(), "4D vertexing studies");
@@ -386,10 +386,13 @@ void MTD4DVertexingAnalyzer::analyze(edm::Event const& event, edm::EventSetup co
         trksTree_.trk_numberOfValidHitsBTL -> push_back(pattern.numberOfValidTimingBTLHits());
         trksTree_.trk_numberOfValidHitsETL -> push_back(pattern.numberOfValidTimingETLHits());
         trksTree_.trk_hasMTD -> push_back(track.isTimeOk());
-        trksTree_.trk_puid_3D -> push_back(mva3D_(track_ref, vtxs3D[0]));
-        trksTree_.trk_puid_4D -> push_back(mva4D_(track_ref, ext_track_ref, vtxs4D[0],
-                                                  t0PID, sigmat0PID, btlMatchChi2, btlMatchTimeChi2, etlMatchChi2, etlMatchTimeChi2,
-                                                  extTracksMTDtime, extPathLenght));
+        //trksTree_.trk_puid_3D -> push_back(mva3D_(track_ref, vtxs3D[0]));
+        if(t_sigmat0 > 0)
+            trksTree_.trk_puid_4D -> push_back(mva4D_(track_ref, ext_track_ref, vtxs4D[0],
+                                                      t0PID, sigmat0PID, btlMatchChi2, btlMatchTimeChi2, etlMatchChi2, etlMatchTimeChi2,
+                                                      extTracksMTDtime, extPathLenght));
+        else
+            trksTree_.trk_puid_4D -> push_back(-1);
         trksTree_.trk_genPdgId -> push_back(genPdgId);
         trksTree_.trk_genPt -> push_back(genPt);
         trksTree_.trk_genEta -> push_back(genEta);
