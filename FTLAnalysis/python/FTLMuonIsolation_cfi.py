@@ -12,7 +12,8 @@ FTLMuonIsolation = cms.EDAnalyzer(
     genPartTag = cms.untracked.InputTag("genParticles", "", "HLT"),
     genJetsTag = cms.untracked.InputTag("ak4GenJets", "", "HLT"),
     ###---Target time resolution (assumes sample were made with 30ps track t resolution)
-    targetResolutions = cms.untracked.vdouble(0.03, 0.05, 0.07, 0.09, 0.15),
+    #targetResolutions = cms.untracked.vdouble(0.03, 0.05, 0.07, 0.09, 0.15),
+    targetResolutions = cms.untracked.vdouble(0.03),
     ###---I/O options
     treeName = cms.untracked.string("muon_tree"),
     ###---Vtx choice option
@@ -24,7 +25,46 @@ FTLMuonIsolation = cms.EDAnalyzer(
     ###---no ETL, get time in endcap from parametrized HGC response
     HGCToySim = cms.untracked.bool(False),
     ###---Trk-vtx dz cut
-    dzCut = cms.untracked.double(0.1),
+    dzCut = cms.untracked.VPSet(
+        cms.PSet(
+            absEtaMax = cms.untracked.double(0.5),
+            dzCutParams = cms.untracked.vdouble(0.152865, 0.343582, -0.140844)
+        ),
+        cms.PSet(
+            absEtaMax = cms.untracked.double(1.0),
+            dzCutParams = cms.untracked.vdouble(0.178083, 0.359211, -0.16321)
+        ),
+        cms.PSet(
+            absEtaMax = cms.untracked.double(1.5),
+            dzCutParams = cms.untracked.vdouble(0.229793, 0.306094, -0.157445)
+        ),
+        cms.PSet(
+            absEtaMax = cms.untracked.double(1.75),
+            dzCutParams = cms.untracked.vdouble(0.280826, 0.563838, -0.328811)
+        ),
+        cms.PSet(
+            absEtaMax = cms.untracked.double(2.0),
+            dzCutParams = cms.untracked.vdouble(0.332952, 0.947662, -0.768322)
+        ),
+        cms.PSet(
+            absEtaMax = cms.untracked.double(2.25),
+            dzCutParams = cms.untracked.vdouble(0.412667, 1.13675, -1.05305)
+        ),
+        cms.PSet(
+            absEtaMax = cms.untracked.double(2.5),
+            dzCutParams = cms.untracked.vdouble(0.494174, 1.13675, -1.05305)
+        ),
+        cms.PSet(
+            absEtaMax = cms.untracked.double(2.75),
+            dzCutParams = cms.untracked.vdouble(0.52859, 1.13675, -1.05305)
+        ),
+        cms.PSet(
+            absEtaMax = cms.untracked.double(3.0),
+            dzCutParams = cms.untracked.vdouble(0.707472, 1.13675, -1.05305)
+        )
+    ),
+    ###---minimum track pt
+    ptCut = cms.untracked.double(0.4),    
     ###---Iso options
     isoConeSizes = cms.untracked.vdouble(0.3)
 )

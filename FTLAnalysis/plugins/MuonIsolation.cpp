@@ -43,6 +43,7 @@
 
 #include "TTree.h"
 #include "TRandom.h"
+#include "TF1.h"
 
 #include "PrecisionTiming/FTLAnalysis/interface/FTLMuonIsoTree.h"
 
@@ -94,12 +95,13 @@ private:
     map<double, FTLMuonIsoTree> outTrees_;
 
     //---options    
-    bool           useMCTruthPV_;
-    bool           isTimingSample_;
-    bool           saveTracksInfo_;
-    bool           HGCToySim_;
-    float          dzCut_;
-    vector<double> isoConeSizes_;
+    bool            useMCTruthPV_;
+    bool            isTimingSample_;
+    bool            saveTracksInfo_;
+    bool            HGCToySim_;
+    float           ptCut_;    
+    vector<double>  isoConeSizes_;
+    map<float, TF1> dzCutFuncs_;
 };
 
 //
@@ -129,7 +131,7 @@ FTLMuonIsolation::FTLMuonIsolation(const edm::ParameterSet& pSet) :
     isTimingSample_ = pSet.getUntrackedParameter<bool>("isTimingSample");
     saveTracksInfo_ = pSet.getUntrackedParameter<bool>("saveTracksInfo");
     HGCToySim_ = pSet.getUntrackedParameter<bool>("HGCToySim");    
-    dzCut_ = pSet.getUntrackedParameter<double>("dzCut");
+    ptCut_ = pSet.getUntrackedParameter<double>("ptCut");    
     isoConeSizes_ = pSet.getUntrackedParameter<vector<double> >("isoConeSizes");
     if(isTimingSample_)
     {
@@ -143,6 +145,16 @@ FTLMuonIsolation::FTLMuonIsolation(const edm::ParameterSet& pSet) :
         targetResolutions_.push_back(0.03);
         outTrees_[0.03] = FTLMuonIsoTree((pSet.getUntrackedParameter<string>("treeName")+"_notiming").c_str(),
                                          "Muon tree for FTL studies");
+    }
+
+    //---get parametric dz cut
+    auto etaBins = pSet.getUntrackedParameter<std::vector<edm::ParameterSet> >("dzCut");
+    for(auto etaBin : etaBins)
+    {
+        auto absEtaMax = etaBin.getUntrackedParameter<double>("absEtaMax"); 
+        dzCutFuncs_[absEtaMax] = TF1((string("f_")+to_string(absEtaMax)).data(), "[0]+[1]/x+[2]/(x*x)", 0, 1000);
+        auto dzCutParams = etaBin.getUntrackedParameter<vector<double> >("dzCutParams"); 
+        dzCutFuncs_[absEtaMax].SetParameters(dzCutParams.data());
     }
 }
 
@@ -226,7 +238,7 @@ FTLMuonIsolation::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
             if(ref->charge() == 0)
                 continue;
             reco::TrackRef track = ref->trackRef();
-            if(track.isNull() || !track->quality(reco::TrackBase::highPurity))
+            if(track.isNull() || !track->quality(reco::TrackBase::highPurity) || track->pt() < ptCut_)
                 continue;
             
             if(isTimingSample_)
@@ -254,7 +266,7 @@ FTLMuonIsolation::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
                 for(int ivtx = 0; ivtx < (int)vtxHandle_->size(); ++ivtx)
                 {
                     const auto& thevtx = (*vtxHandle_)[ivtx];
-                    const float dz = std::abs(track->dz(thevtx.position()));
+                    const float dz = track->dz(thevtx.position());
                     const float dxy = std::abs(track->dxy(thevtx.position()));
                     const float dt = std::abs(time - thevtx.t());
                     // const float dz2 = std::pow(ref->dz(thevtx.position()), 2);
@@ -270,7 +282,9 @@ FTLMuonIsolation::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
                     const float time_cut7 = 7.f*base_cut;
                     const float time_cut10 = 20.f*base_cut;
 
-                    const bool keepz = ( dz < dzCut_ && dxy < 0.02 );
+                    auto dzFunc = dzCutFuncs_.upper_bound(std::abs(track->eta()));
+                    auto dzCut = dzFunc != dzCutFuncs_.end() ? dzFunc->second.Eval(track->pt()) : dzCutFuncs_.rbegin()->second.Eval(track->pt());  
+                    const bool keepz = ( std::abs(dz) < dzCut && dxy < 0.02 );
                     const bool keept3 = (!useTime || std::isnan(dt) || dt < time_cut3);
                     const bool keept4 = (!useTime || std::isnan(dt) || dt < time_cut4);
                     const bool keept5 = (!useTime || std::isnan(dt) || dt < time_cut5);
@@ -317,30 +331,32 @@ FTLMuonIsolation::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
                 const auto& thevtx = (*vtxHandle_)[ivtx];
                 const float dz = std::abs(track->dz(thevtx.position()));
                 const float dxy = std::abs(track->dxy(thevtx.position()));                
-                const float rel_dz = std::abs(dz/std::sqrt(track->dzError()*track->dzError()+
-                                                           thevtx.zError()*thevtx.zError()));
-                const bool keepz = ( dz < dzCut_ && dxy < 0.02  );
-                const bool keepz1 = ( rel_dz < 1 );
-                const bool keepz3 = ( rel_dz < 3 );
-                const bool keepz5 = ( rel_dz < 5 );
-                const bool keepz7 = ( rel_dz < 7 );
-                const bool keepz10 = ( rel_dz < 10 );
+                // const float rel_dz = std::abs(dz/std::sqrt(track->dzError()*track->dzError()+
+                //                                            thevtx.zError()*thevtx.zError()));
+                auto dzFunc = dzCutFuncs_.upper_bound(std::abs(track->eta()));
+                auto dzCut = dzFunc != dzCutFuncs_.end() ? dzFunc->second.Eval(track->pt()) : dzCutFuncs_.rbegin()->second.Eval(track->pt());  
+                const bool keepz = ( dz < dzCut && dxy < 0.02  );
+                // const bool keepz1 = ( rel_dz < 1 );
+                // const bool keepz3 = ( rel_dz < 3 );
+                // const bool keepz5 = ( rel_dz < 5 );
+                // const bool keepz7 = ( rel_dz < 7 );
+                // const bool keepz10 = ( rel_dz < 10 );
 
                 if(keepz)
                     vertices_to_tracks_z.emplace(ivtx, track);
-                if(!isTimingSample_)
-                {
-                    if(keepz1)
-                        vertices_to_tracks_z1.emplace(ivtx, track);
-                    if(keepz3)
-                        vertices_to_tracks_z3.emplace(ivtx, track);
-                    if(keepz5)
-                        vertices_to_tracks_z5.emplace(ivtx, track);
-                    if(keepz7)
-                        vertices_to_tracks_z7.emplace(ivtx, track);
-                    if(keepz10)
-                        vertices_to_tracks_z10.emplace(ivtx, track);
-                }
+                // if(!isTimingSample_)
+                // {
+                //     if(keepz1)
+                //         vertices_to_tracks_z1.emplace(ivtx, track);
+                //     if(keepz3)
+                //         vertices_to_tracks_z3.emplace(ivtx, track);
+                //     if(keepz5)
+                //         vertices_to_tracks_z5.emplace(ivtx, track);
+                //     if(keepz7)
+                //         vertices_to_tracks_z7.emplace(ivtx, track);
+                //     if(keepz10)
+                //         vertices_to_tracks_z10.emplace(ivtx, track);
+                // }
             }
         }
 
@@ -366,34 +382,34 @@ FTLMuonIsolation::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
             if(useMCTruthPV_)
             {
                 double min_dz = std::numeric_limits<double>::max();
-                //double min_dzdt = std::numeric_limits<double>::max();
+                double min_dzdt = std::numeric_limits<double>::max();
                 for( unsigned i = 0; i < vtxHandle_->size(); ++i )
                 {
                     const auto& vtx = (*vtxHandle_)[i];
                     const float dz = std::abs(vtx.z() - genPV.position().z());
-                    if( dz < min_dz )
-                    {
-                        min_dz = dz;
-                        vtx_index = i;
-                    }
-                    // if( dz < 0.1 )
+                    // if( dz < min_dz )
                     // {
-                    //     if(isTimingSample_)
-                    //     {
-                    //         const double dzdt = pow((vtx.z() - genPV.position().z())/vtx.zError(), 2) +
-                    //             pow((vtx.t()-genPV.position().t())/vtx.tError(), 2);                            
-                    //         if( dzdt < min_dzdt )
-                    //         {
-                    //             min_dzdt = dzdt;
-                    //             vtx_index = i;
-                    //         }
-                    //     }
-                    //     else if( dz < min_dz )
-                    //     {
-                    //             min_dz = dz;
-                    //             vtx_index = i;
-                    //     }
+                    //     min_dz = dz;
+                    //     vtx_index = i;
                     // }
+                    if( dz < 0.1 )
+                    {
+                        if(isTimingSample_)
+                        {
+                            const double dzdt = pow((vtx.z() - genPV.position().z())/vtx.zError(), 2) +
+                                pow((vtx.t()-genPV.position().t())/vtx.tError(), 2);                            
+                            if( dzdt < min_dzdt )
+                            {
+                                min_dzdt = dzdt;
+                                vtx_index = i;
+                            }
+                        }
+                        else if( dz < min_dz )
+                        {
+                                min_dz = dz;
+                                vtx_index = i;
+                        }
+                    }
                 }
             }
                         
@@ -406,11 +422,11 @@ FTLMuonIsolation::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
                     continue;
                 const auto& ivtx = (*vtxHandle_)[i];
                 const float dz = std::abs(vtx.z() - ivtx.z());
-                if( dz < dzCut_ )
+                if( dz < 0.1 )
                     ++n_close_vtxs;
             }
             
-            const auto tracks_removed = vertices_cleaned_tracks_zt3.equal_range(vtx_index == -1 ? 0 : vtx_index);
+            //const auto tracks_removed = vertices_cleaned_tracks_zt3.equal_range(vtx_index == -1 ? 0 : vtx_index);
             const auto tracks_z  = vertices_to_tracks_z.equal_range(vtx_index == -1 ? 0 : vtx_index);
             const auto tracks_z1  = vertices_to_tracks_z1.equal_range(vtx_index == -1 ? 0 : vtx_index);
             const auto tracks_z3  = vertices_to_tracks_z3.equal_range(vtx_index == -1 ? 0 : vtx_index);
@@ -453,14 +469,21 @@ FTLMuonIsolation::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
             //---per tracks info
             if(saveTracksInfo_)
             {
-                std::swap(*outTrees_[iRes].tracksPt, tracks_pt);
-                std::swap(*outTrees_[iRes].tracksEta, tracks_eta);
-                std::swap(*outTrees_[iRes].tracksPhi, tracks_phi);                
-                std::swap(*outTrees_[iRes].tracksDZ, tracks_dz);
-                std::swap(*outTrees_[iRes].tracksDXY, tracks_dxy);
-                std::swap(*outTrees_[iRes].tracksT, tracks_t);
-                std::swap(*outTrees_[iRes].tracksKeepZ, tracks_keepz);
-                std::swap(*outTrees_[iRes].tracksKeepT, tracks_keept);
+                *outTrees_[iRes].tracksPt = tracks_pt;
+                *outTrees_[iRes].tracksEta = tracks_eta;
+                *outTrees_[iRes].tracksPhi = tracks_phi;                
+                *outTrees_[iRes].tracksDZ = tracks_dz;
+                *outTrees_[iRes].tracksDXY = tracks_dxy;
+                *outTrees_[iRes].tracksT = tracks_t; 
+                *outTrees_[iRes].tracksKeepZ = tracks_keepz;
+                *outTrees_[iRes].tracksKeepT = tracks_keept;
+                for(unsigned int iT=0; iT<tracks_eta.size(); ++iT)
+                {
+                    if(deltaR2(muon.eta(), muon.phi(), tracks_eta[iT], tracks_phi[iT]) < 0.3*0.3)
+                        outTrees_[iRes].tracksInCone->push_back(true);
+                    else
+                        outTrees_[iRes].tracksInCone->push_back(false);
+                }
             }
             
             //---compute the varius isolations for all requested cone sizes
@@ -493,8 +516,8 @@ FTLMuonIsolation::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
                     if( ref == muon.track() ) continue;
                     if( reco::deltaR2(ref->eta(), ref->phi(), muon.eta(), muon.phi()) >= DR*DR ) continue;
                     outTrees_[iRes].chIsoZCut->at(iDR) += ref->pt();
-                    if(iDR==0)
-                        outTrees_[iRes].tracksInConePt->push_back(ref->pt());
+                    // if(iDR==0)
+                    //     outTrees_[iRes].tracksInConePt->push_back(ref->pt());
                 }
                 if(!isTimingSample_)
                 {
@@ -549,17 +572,17 @@ FTLMuonIsolation::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
                         if( reco::deltaR2(ref->eta(), ref->phi(), muon.eta(), muon.phi()) >= DR*DR ) continue;
                         outTrees_[iRes].chIsoZTCut_3sigma->at(iDR) += ref->pt();
                     }
-                    //---rejected tracks
-                    if(iDR==0)
-                    {
-                        for( auto it = tracks_removed.first; it != tracks_removed.second; ++it )
-                        {
-                            auto ref = it->second;
-                            if( ref == muon.track() ) continue;
-                            if( reco::deltaR2(ref->eta(), ref->phi(), muon.eta(), muon.phi()) >= DR*DR ) continue;
-                            outTrees_[iRes].tracksRemovedPt->push_back(ref->pt());
-                        }
-                    }
+                    // //---rejected tracks
+                    // if(iDR==0)
+                    // {
+                    //     for( auto it = tracks_removed.first; it != tracks_removed.second; ++it )
+                    //     {
+                    //         auto ref = it->second;
+                    //         if( ref == muon.track() ) continue;
+                    //         if( reco::deltaR2(ref->eta(), ref->phi(), muon.eta(), muon.phi()) >= DR*DR ) continue;
+                    //         outTrees_[iRes].tracksRemovedPt->push_back(ref->pt());
+                    //     }
+                    // }
 
                     //--- dz + dt 4 sigma
                     for( auto it = tracks_zt4.first; it != tracks_zt4.second; ++it ) 

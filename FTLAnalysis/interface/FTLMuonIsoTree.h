@@ -59,14 +59,13 @@ using namespace std;
     DATA(std::vector<float>, chIsoZTCut_5sigma)         \
     DATA(std::vector<float>, chIsoZTCut_7sigma)         \
     DATA(std::vector<float>, chIsoZTCut_10sigma)        \
-    DATA(std::vector<float>, tracksInConePt)            \
-    DATA(std::vector<float>, tracksRemovedPt)           \
     DATA(std::vector<float>, tracksPt)                  \
     DATA(std::vector<float>, tracksEta)                 \
     DATA(std::vector<float>, tracksPhi)                 \
     DATA(std::vector<float>, tracksDZ)                  \
     DATA(std::vector<float>, tracksDXY)                 \
     DATA(std::vector<float>, tracksT)                   \
+    DATA(std::vector<bool>, tracksInCone)               \
     DATA(std::vector<bool>, tracksKeepZ)                \
     DATA(std::vector<bool>, tracksKeepT)               
     

@@ -152,7 +152,7 @@ process.MuonIsolation.useMCTruthPV = options.usegenpv
 process.MuonIsolation.isTimingSample = options.isTimingSample
 process.MuonIsolation.saveTracksInfo = options.saveTracksInfo
 process.MuonIsolation.HGCToySim = options.HGCToySim
-process.MuonIsolation.dzCut = options.dzCut
+#process.MuonIsolation.dzCut = options.dzCut
 if process.MuonIsolation.isTimingSample:
    process.MuonIsolation.vtxTag = cms.untracked.InputTag("offlinePrimaryVertices4D", "", "RECO")
 ##process.MuonIsolation.targetResolutions = cms.vdouble(res for res in options.targetres)
